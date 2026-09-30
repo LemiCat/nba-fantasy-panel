@@ -85,6 +85,7 @@ def verileri_guncelle():
         isim = f"{p['first_name']} {p['second_name']}".strip()
         t_code = teams.get(p["team"], "UNK")
         pos = positions.get(p["element_type"], "FC")
+        player_code = p.get("code", "")
 
         current_cost = p.get("now_cost", 0) / 10.0
         purchase_cost = p.get("cost_change_start", 0) / 10.0
@@ -101,6 +102,7 @@ def verileri_guncelle():
 
         kayit = {
             "id": p["id"],
+            "code": player_code,
             "isim": isim,
             "takim": t_code,
             "pozisyon": pos,

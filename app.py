@@ -11,13 +11,49 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- 1. VERİ KONTROLÜ & GÜNCELLEME ---
+# Takım Logo URL Sözlüğü (ESPN HD CDN)
+TEAM_LOGOS = {
+    "ATL": "https://a.espncdn.com/i/teamlogos/nba/500/atl.png",
+    "BOS": "https://a.espncdn.com/i/teamlogos/nba/500/bos.png",
+    "BKN": "https://a.espncdn.com/i/teamlogos/nba/500/bkn.png",
+    "CHA": "https://a.espncdn.com/i/teamlogos/nba/500/cha.png",
+    "CHI": "https://a.espncdn.com/i/teamlogos/nba/500/chi.png",
+    "CLE": "https://a.espncdn.com/i/teamlogos/nba/500/cle.png",
+    "DAL": "https://a.espncdn.com/i/teamlogos/nba/500/dal.png",
+    "DEN": "https://a.espncdn.com/i/teamlogos/nba/500/den.png",
+    "DET": "https://a.espncdn.com/i/teamlogos/nba/500/det.png",
+    "GSW": "https://a.espncdn.com/i/teamlogos/nba/500/gsw.png",
+    "HOU": "https://a.espncdn.com/i/teamlogos/nba/500/hou.png",
+    "IND": "https://a.espncdn.com/i/teamlogos/nba/500/ind.png",
+    "LAC": "https://a.espncdn.com/i/teamlogos/nba/500/lac.png",
+    "LAL": "https://a.espncdn.com/i/teamlogos/nba/500/lal.png",
+    "MEM": "https://a.espncdn.com/i/teamlogos/nba/500/mem.png",
+    "MIA": "https://a.espncdn.com/i/teamlogos/nba/500/mia.png",
+    "MIL": "https://a.espncdn.com/i/teamlogos/nba/500/mil.png",
+    "MIN": "https://a.espncdn.com/i/teamlogos/nba/500/min.png",
+    "NOP": "https://a.espncdn.com/i/teamlogos/nba/500/no.png",
+    "NYK": "https://a.espncdn.com/i/teamlogos/nba/500/nyk.png",
+    "OKC": "https://a.espncdn.com/i/teamlogos/nba/500/okc.png",
+    "ORL": "https://a.espncdn.com/i/teamlogos/nba/500/orl.png",
+    "PHI": "https://a.espncdn.com/i/teamlogos/nba/500/phi.png",
+    "PHX": "https://a.espncdn.com/i/teamlogos/nba/500/phx.png",
+    "POR": "https://a.espncdn.com/i/teamlogos/nba/500/por.png",
+    "SAC": "https://a.espncdn.com/i/teamlogos/nba/500/sac.png",
+    "SAS": "https://a.espncdn.com/i/teamlogos/nba/500/sas.png",
+    "TOR": "https://a.espncdn.com/i/teamlogos/nba/500/tor.png",
+    "UTA": "https://a.espncdn.com/i/teamlogos/nba/500/uta.png",
+    "WAS": "https://a.espncdn.com/i/teamlogos/nba/500/was.png"
+}
+
+# --- 1. VERİ KONTROLÜ ---
 if not os.path.exists("oyuncular.csv"):
     with st.spinner("İlk çalıştırma için oyuncu verileri çekiliyor..."):
         df = motor.verileri_guncelle()
 else:
     try:
         df = pd.read_csv("oyuncular.csv")
+        if "code" not in df.columns:
+            df = motor.verileri_guncelle()
     except Exception:
         df = motor.verileri_guncelle()
 
@@ -61,18 +97,16 @@ with col_menajer:
                 st.rerun()
 
 with col_guncelle:
-    st.write("") # hizalama için
+    st.write("")
     if st.button("🔄 Verileri Güncelle", help="NBA API'sinden en güncel sakatlık ve fikstür verilerini çeker"):
         with st.spinner("NBA API'sinden güncel veriler çekiliyor..."):
             df = motor.verileri_guncelle()
             st.success("✅ Veriler güncellendi!")
             st.rerun()
 
-# Menajere özel kadro dosyası
 aktif_menajer = profiller[0] if secilen_profil == "➕ Yeni Menajer Ekle..." else secilen_profil
 KADRO_DOSYASI = f"kadro_{aktif_menajer.lower()}.json"
 
-# Menajer Kadrosunu Yükleme / Session State
 if f"kadro_{aktif_menajer}" not in st.session_state:
     if os.path.exists(KADRO_DOSYASI):
         try:
@@ -94,16 +128,33 @@ def kadroyu_kaydet():
 GW_NOW = 1
 GW_NEXT = 2
 
-# --- OYUNCU DETAY POP-UP MODAL ---
+# --- OYUNCU DETAY POP-UP MODAL (ZENGİN GÖRSEL TASARIM) ---
 @st.dialog("Oyuncu Detay Kartı", width="large")
 def oyuncu_popup(isim):
     p = df[df["isim"] == isim].iloc[0]
+    p_code = p.get("code", "")
+    t_code = p.get("takim", "")
     
-    col_t1, col_t2 = st.columns([2.5, 1.5])
-    with col_t1:
+    # NBA Resmi CDN Fotoğrafı
+    foto_url = f"https://ak-static.cms.nba.com/wp-content/uploads/headshots/nba/latest/260x190/{p_code}.png" if p_code else None
+    logo_url = TEAM_LOGOS.get(t_code, None)
+
+    # Üst Bölüm: Fotoğraf - Bilgiler - Logo & Durum Rozetleri
+    c_img, c_info, c_status = st.columns([1.2, 2.5, 1.3])
+    
+    with c_img:
+        if foto_url:
+            st.image(foto_url, width=120)
+        else:
+            st.markdown("👤")
+            
+    with c_info:
         st.markdown(f"## {p['isim']}")
-        st.markdown(f"**Takım:** `{p['takim']}` | **Mevki:** `{p['pozisyon']}` | **Fiyat:** **{p['fiyat']}M**")
-    with col_t2:
+        st.markdown(f"**Takım:** `{t_code}` | **Mevki:** `{p['pozisyon']}` | **Fiyat:** **{p['fiyat']}M**")
+        if logo_url:
+            st.image(logo_url, width=42)
+            
+    with c_status:
         if p["durum"] == "Sakat":
             st.error("🔴 Sakat")
         elif "Şüpheli" in p["durum"]:
@@ -112,11 +163,13 @@ def oyuncu_popup(isim):
             st.success("🟢 Sağlıklı")
             
         if p.get("mac_kacirma") == "Sık Maç Kaçırıyor":
-            st.error("⚠️ Sık Maç Kaçırıyor")
+            st.error("⚠️ Sık Kaçırıyor")
         else:
-            st.info("🛡️ Devamlılık: Düzenli")
+            st.info("🛡️ Düzenli")
 
     st.markdown("---")
+    
+    # Kadro Ekleme / Çıkarma
     btn_c1, _ = st.columns([2, 2])
     with btn_c1:
         if isim in suanki_kadro_isimler:
