@@ -11,38 +11,130 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Takım Logo URL Sözlüğü (ESPN HD CDN)
+# Tüm NBA Takımları İçin Resmi ve Kararlı Logo Listesi
 TEAM_LOGOS = {
-    "ATL": "https://a.espncdn.com/i/teamlogos/nba/500/atl.png",
-    "BOS": "https://a.espncdn.com/i/teamlogos/nba/500/bos.png",
-    "BKN": "https://a.espncdn.com/i/teamlogos/nba/500/bkn.png",
-    "CHA": "https://a.espncdn.com/i/teamlogos/nba/500/cha.png",
-    "CHI": "https://a.espncdn.com/i/teamlogos/nba/500/chi.png",
-    "CLE": "https://a.espncdn.com/i/teamlogos/nba/500/cle.png",
-    "DAL": "https://a.espncdn.com/i/teamlogos/nba/500/dal.png",
-    "DEN": "https://a.espncdn.com/i/teamlogos/nba/500/den.png",
-    "DET": "https://a.espncdn.com/i/teamlogos/nba/500/det.png",
-    "GSW": "https://a.espncdn.com/i/teamlogos/nba/500/gsw.png",
-    "HOU": "https://a.espncdn.com/i/teamlogos/nba/500/hou.png",
-    "IND": "https://a.espncdn.com/i/teamlogos/nba/500/ind.png",
-    "LAC": "https://a.espncdn.com/i/teamlogos/nba/500/lac.png",
-    "LAL": "https://a.espncdn.com/i/teamlogos/nba/500/lal.png",
-    "MEM": "https://a.espncdn.com/i/teamlogos/nba/500/mem.png",
-    "MIA": "https://a.espncdn.com/i/teamlogos/nba/500/mia.png",
-    "MIL": "https://a.espncdn.com/i/teamlogos/nba/500/mil.png",
-    "MIN": "https://a.espncdn.com/i/teamlogos/nba/500/min.png",
-    "NOP": "https://a.espncdn.com/i/teamlogos/nba/500/no.png",
-    "NYK": "https://a.espncdn.com/i/teamlogos/nba/500/nyk.png",
-    "OKC": "https://a.espncdn.com/i/teamlogos/nba/500/okc.png",
-    "ORL": "https://a.espncdn.com/i/teamlogos/nba/500/orl.png",
-    "PHI": "https://a.espncdn.com/i/teamlogos/nba/500/phi.png",
-    "PHX": "https://a.espncdn.com/i/teamlogos/nba/500/phx.png",
-    "POR": "https://a.espncdn.com/i/teamlogos/nba/500/por.png",
-    "SAC": "https://a.espncdn.com/i/teamlogos/nba/500/sac.png",
-    "SAS": "https://a.espncdn.com/i/teamlogos/nba/500/sas.png",
-    "TOR": "https://a.espncdn.com/i/teamlogos/nba/500/tor.png",
-    "UTA": "https://a.espncdn.com/i/teamlogos/nba/500/uta.png",
-    "WAS": "https://a.espncdn.com/i/teamlogos/nba/500/was.png"
+    "ATL": "https://cdn.nba.com/logos/nba/1610612737/primary/L/logo.svg",
+    "BOS": "https://cdn.nba.com/logos/nba/1610612738/primary/L/logo.svg",
+    "BKN": "https://cdn.nba.com/logos/nba/1610612751/primary/L/logo.svg",
+    "CHA": "https://cdn.nba.com/logos/nba/1610612766/primary/L/logo.svg",
+    "CHI": "https://cdn.nba.com/logos/nba/1610612741/primary/L/logo.svg",
+    "CLE": "https://cdn.nba.com/logos/nba/1610612739/primary/L/logo.svg",
+    "DAL": "https://cdn.nba.com/logos/nba/1610612742/primary/L/logo.svg",
+    "DEN": "https://cdn.nba.com/logos/nba/1610612743/primary/L/logo.svg",
+    "DET": "https://cdn.nba.com/logos/nba/1610612765/primary/L/logo.svg",
+    "GSW": "https://cdn.nba.com/logos/nba/1610612744/primary/L/logo.svg",
+    "HOU": "https://cdn.nba.com/logos/nba/1610612745/primary/L/logo.svg",
+    "IND": "https://cdn.nba.com/logos/nba/1610612754/primary/L/logo.svg",
+    "LAC": "https://cdn.nba.com/logos/nba/1610612746/primary/L/logo.svg",
+    "LAL": "https://cdn.nba.com/logos/nba/1610612747/primary/L/logo.svg",
+    "MEM": "https://cdn.nba.com/logos/nba/1610612763/primary/L/logo.svg",
+    "MIA": "https://cdn.nba.com/logos/nba/1610612748/primary/L/logo.svg",
+    "MIL": "https://cdn.nba.com/logos/nba/1610612749/primary/L/logo.svg",
+    "MIN": "https://cdn.nba.com/logos/nba/1610612750/primary/L/logo.svg",
+    "NOP": "https://cdn.nba.com/logos/nba/1610612740/primary/L/logo.svg",
+    "NYK": "https://cdn.nba.com/logos/nba/1610612752/primary/L/logo.svg",
+    "OKC": "https://cdn.nba.com/logos/nba/1610612760/primary/L/logo.svg",
+    "ORL": "https://cdn.nba.com/logos/nba/1610612753/primary/L/logo.svg",
+    "PHI": "https://cdn.nba.com/logos/nba/1610612755/primary/L/logo.svg",
+    "PHX": "https://cdn.nba.com/logos/nba/1610612756/primary/L/logo.svg",
+    "POR": "https://cdn.nba.com/logos/nba/1610612757/primary/L/logo.svg",
+    "SAC": "https://cdn.nba.com/logos/nba/1610612758/primary/L/logo.svg",
+    "SAS": "https://cdn.nba.com/logos/nba/1610612759/primary/L/logo.svg",
+    "TOR": "https://cdn.nba.com/logos/nba/1610612761/primary/L/logo.svg",
+    "UTA": "https://cdn.nba.com/logos/nba/1610612762/primary/L/logo.svg",
+    "WAS": "https://cdn.nba.com/logos/nba/1610612764/primary/L/logo.svg"
+}
+
+# --- OYUNCU DETAY POP-UP MODAL (ZENGİN & DÜZELTİLMİŞ GÖRSEL) ---
+@st.dialog("Oyuncu Detay Kartı", width="large")
+def oyuncu_popup(isim):
+    p = df[df["isim"] == isim].iloc[0]
+    p_code = str(p.get("code", "")).replace(".0", "").strip()
+    t_code = p.get("takim", "")
+    
+    # NBA Resmi Headshot CDN (Resmi NBA Player Headshot URL)
+    foto_url = f"https://ak-static.cms.nba.com/wp-content/uploads/headshots/nba/latest/260x190/{p_code}.png" if p_code else None
+    logo_url = TEAM_LOGOS.get(t_code, None)
+
+    # 3 Sütunlu Üst Alan
+    c_img, c_info, c_status = st.columns([1.5, 2.5, 1.5])
+    
+    with c_img:
+        if foto_url:
+            # HTML ile güvenli yükleme; resim bulunamazsa şık bir silüet kutusu gösterir
+            st.markdown(
+                f"""
+                <div style="display:flex; justify-content:center; align-items:center; background:#1b222c; border-radius:12px; padding:6px; min-height:130px;">
+                    <img src="{foto_url}" width="120" style="border-radius:8px;" onerror="this.onerror=null; this.src='https://cdn.nba.com/headshots/nba/latest/260x190/fallback.png';">
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+            
+    with c_info:
+        st.markdown(f"## {p['isim']}")
+        st.markdown(f"**Takım:** `{t_code}` | **Mevki:** `{p['pozisyon']}` | **Fiyat:** **{p['fiyat']}M**")
+        if logo_url:
+            st.image(logo_url, width=65)
+            
+    with c_status:
+        if p["durum"] == "Sakat":
+            st.error("🔴 Sakat")
+        elif "Şüpheli" in p["durum"]:
+            st.warning(f"🟡 {p['durum']}")
+        else:
+            st.success("🟢 Sağlıklı")
+            
+        if p.get("mac_kacirma") == "Sık Maç Kaçırıyor":
+            st.error("⚠️ Sık Kaçırıyor")
+        else:
+            st.info("🛡️ Düzenli")
+
+    st.markdown("---")
+    
+    # Kadro Ekleme / Çıkarma Butonu
+    btn_c1, _ = st.columns([2, 2])
+    with btn_c1:
+        if isim in suanki_kadro_isimler:
+            if st.button("❌ Bu Oyuncuyu Kadrodan Çıkar", use_container_width=True):
+                suanki_kadro_isimler.remove(isim)
+                kadroyu_kaydet()
+                st.rerun()
+        else:
+            if len(suanki_kadro_isimler) < 10:
+                if st.button("🟢 Bu Oyuncuyu Kadroya Ekle", use_container_width=True):
+                    suanki_kadro_isimler.append(isim)
+                    kadroyu_kaydet()
+                    st.rerun()
+            else:
+                st.caption("⚠️ Kadro dolu (10/10). Eklemek için birini çıkarmalısınız.")
+
+    st.markdown("---")
+    st.markdown("### 📅 Yaklaşan Fikstür")
+    f_col1, f_col2 = st.columns(2)
+    with f_col1:
+        st.metric(label=f"Bu Hafta (GW{GW_NOW})", value=f"{p[f'gw{GW_NOW}_mac']} Maç", delta=f"B2B: {p[f'gw{GW_NOW}_b2b']}", delta_color="off")
+    with f_col2:
+        st.metric(label=f"Gelecek Hafta (GW{GW_NEXT})", value=f"{p[f'gw{GW_NEXT}_mac']} Maç", delta=f"B2B: {p[f'gw{GW_NEXT}_b2b']}", delta_color="off")
+
+    st.markdown("---")
+    st.markdown("### 📊 Performans & Form Eğilimi (Son 5 Maç)")
+    
+    def format_delta(sezon_val, form_val):
+        if sezon_val == 0 and form_val == 0: return "—"
+        fark = round(form_val - sezon_val, 1)
+        return f"+{fark}" if fark > 0 else f"{fark}" if fark < 0 else "0.0"
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Süre (Dk)", f"{p.get('f_dakika', 0.0):.1f}", delta=format_delta(p.get("dakika", 0.0), p.get("f_dakika", 0.0)))
+    c2.metric("Fantezi Puanı", f"{p.get('f_ort_puan', 0.0):.1f}", delta=format_delta(p.get("ort_puan", 0.0), p.get("f_ort_puan", 0.0)))
+    c3.metric("Sayı", f"{p.get('f_sayi', 0.0):.1f}", delta=format_delta(p.get("sayi", 0.0), p.get("f_sayi", 0.0)))
+    c4.metric("Asist", f"{p.get('f_asist', 0.0):.1f}", delta=format_delta(p.get("asist", 0.0), p.get("f_asist", 0.0)))
+
+    c5, c6, c7 = st.columns(3)
+    c5.metric("Ribaund", f"{p.get('f_ribaund', 0.0):.1f}", delta=format_delta(p.get("ribaund", 0.0), p.get("f_ribaund", 0.0)))
+    c6.metric("Top Çalma", f"{p.get('f_top_calma', 0.0):.1f}", delta=format_delta(p.get("top_calma", 0.0), p.get("f_top_calma", 0.0)))
+    c7.metric("Blok", f"{p.get('f_blok', 0.0):.1f}", delta=format_delta(p.get("blok", 0.0), p.get("f_blok", 0.0)))
 }
 
 # --- 1. VERİ KONTROLÜ ---
