@@ -11,6 +11,117 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# --- GELİŞMİŞ NBA DARK THEME CSS ---
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    
+    html, body, [class*="css"] {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    
+    .stApp {
+        background-color: #0a0e17;
+        color: #e2e8f0;
+    }
+    
+    /* Header Alanı */
+    .nba-header {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 6px 0 18px 0;
+        border-bottom: 1px solid #1e293b;
+        margin-bottom: 20px;
+    }
+    .nba-header-title {
+        font-size: 1.75rem;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        background: linear-gradient(90deg, #ffffff, #94a3b8);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin: 0;
+    }
+
+    /* Scoreboard Metrik Kartları */
+    .metric-card {
+        background: #111827;
+        border: 1px solid #1f2937;
+        border-radius: 12px;
+        padding: 14px 18px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+        transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+    .metric-card:hover {
+        border-color: #374151;
+        transform: translateY(-2px);
+    }
+    .metric-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #94a3b8;
+        margin-bottom: 4px;
+    }
+    .metric-value {
+        font-size: 1.45rem;
+        font-weight: 800;
+        color: #f8fafc;
+        line-height: 1.2;
+    }
+    .metric-sub {
+        font-size: 0.75rem;
+        color: #64748b;
+        margin-top: 4px;
+    }
+    .metric-sub.success { color: #10b981; }
+    .metric-sub.danger { color: #ef4444; }
+
+    /* Rozetler (Pills / Badges) */
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 3px 8px;
+        border-radius: 6px;
+        letter-spacing: 0.3px;
+    }
+    .badge-out { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .badge-dtd { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-active { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-b2b { background: rgba(234, 88, 12, 0.15); color: #fb923c; border: 1px solid rgba(234, 88, 12, 0.3); }
+    .badge-waste { background: rgba(239, 68, 68, 0.12); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.25); }
+    .badge-clean { background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.25); }
+    .badge-pos { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; font-size: 0.7rem; }
+
+    /* Tablo Satır Tasarımı */
+    .player-row {
+        background: #0f172a;
+        border: 1px solid #1e293b;
+        border-radius: 10px;
+        padding: 10px 14px;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        transition: background 0.15s ease;
+    }
+    .player-row:hover {
+        background: #172033;
+    }
+    
+    /* Buton İyileştirmeleri */
+    div.stButton > button {
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.15s ease;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 TEAM_LOGOS = {
     "ATL": "https://cdn.nba.com/logos/nba/1610612737/primary/L/logo.svg",
     "BOS": "https://cdn.nba.com/logos/nba/1610612738/primary/L/logo.svg",
@@ -44,9 +155,9 @@ TEAM_LOGOS = {
     "WAS": "https://cdn.nba.com/logos/nba/1610612764/primary/L/logo.svg"
 }
 
-# --- 1. VERİ KONTROLÜ ---
+# --- 1. VERİ YÜKLEME ---
 if not os.path.exists("oyuncular.csv"):
-    with st.spinner("İlk çalıştırma için oyuncu verileri çekiliyor..."):
+    with st.spinner("NBA verileri alınıyor..."):
         df = motor.verileri_guncelle()
 else:
     try:
@@ -74,33 +185,40 @@ default_names = [
     "Joel Embiid", "Zion Williamson", "Walker Kessler", "Jusuf Nurkic", "Tolu Smith"
 ]
 
-# --- ÜST BAŞLIK VE MENAJER KONTROLLERİ ---
-col_baslik, col_menajer, col_guncelle = st.columns([2.5, 1.8, 1])
+# Header Bar
+c_head, c_mgr, c_sync = st.columns([2.8, 1.6, 0.8])
+with c_head:
+    st.markdown("""
+    <div class="nba-header">
+        <span style="font-size:2rem;">🏀</span>
+        <div>
+            <h1 class="nba-header-title">NBA FANTASY KARAR DESTEK</h1>
+            <span style="font-size:0.75rem; color:#64748b; font-weight:600;">CANLI KADRO VE FİKSTÜR OPTİMİZASYON MERKEZİ</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-with col_baslik:
-    st.title("🏀 NBA Fantasy Karar Paneli")
-
-with col_menajer:
+with c_mgr:
     secilen_profil = st.selectbox(
-        "👤 Menajer / Takım Profili:",
+        "Menajer Profili:",
         options=profiller + ["➕ Yeni Menajer Ekle..."],
-        index=0
+        index=0,
+        label_visibility="collapsed"
     )
     if secilen_profil == "➕ Yeni Menajer Ekle...":
-        yeni_ad = st.text_input("Yeni Menajer İsmi:", placeholder="Örn: Mehmet")
-        if st.button("Menajeri Kaydet"):
+        yeni_ad = st.text_input("Yeni Menajer:", placeholder="Örn: Mehmet")
+        if st.button("Kaydet", use_container_width=True):
             if yeni_ad and yeni_ad not in profiller:
                 profiller.append(yeni_ad)
                 with open(PROFILLER_DOSYASI, "w", encoding="utf-8") as f:
                     json.dump(profiller, f, ensure_ascii=False, indent=2)
                 st.rerun()
 
-with col_guncelle:
-    st.write("")
-    if st.button("🔄 Verileri Güncelle", help="NBA API'sinden en güncel verileri çeker"):
-        with st.spinner("NBA API'sinden güncel veriler çekiliyor..."):
+with c_sync:
+    if st.button("🔄 Güncelle", help="NBA API'sinden en güncel verileri çeker", use_container_width=True):
+        with st.spinner("Güncelleniyor..."):
             df = motor.verileri_guncelle()
-            st.success("✅ Veriler güncellendi!")
+            st.success("Hazır!")
             st.rerun()
 
 aktif_menajer = profiller[0] if secilen_profil == "➕ Yeni Menajer Ekle..." else secilen_profil
@@ -127,12 +245,11 @@ def kadroyu_kaydet():
 GW_NOW = 1
 GW_NEXT = 2
 
-# Mevcut kadronun takımları ve takım başına oyuncu sayısı
 kadro_df_gecici = df[df["isim"].isin(suanki_kadro_isimler)]
 takim_sayilari = kadro_df_gecici["takim"].value_counts().to_dict()
 
 # --- OYUNCU DETAY POP-UP MODAL ---
-@st.dialog("Oyuncu Detay Kartı", width="large")
+@st.dialog("Oyuncu Profili", width="large")
 def oyuncu_popup(isim):
     p = df[df["isim"] == isim].iloc[0]
     p_code = str(p.get("code", "")).replace(".0", "").strip()
@@ -141,37 +258,38 @@ def oyuncu_popup(isim):
     foto_url = f"https://ak-static.cms.nba.com/wp-content/uploads/headshots/nba/latest/260x190/{p_code}.png" if p_code else None
     logo_url = TEAM_LOGOS.get(t_code, None)
 
-    c_img, c_info, c_status = st.columns([2, 3.5, 2])
+    c_img, c_info, c_status = st.columns([1.8, 3.2, 2])
     
     with c_img:
         if foto_url:
-            st.image(foto_url, width=180)
+            st.image(foto_url, width=170)
         else:
             st.markdown("👤 *Fotoğraf Yok*")
             
     with c_info:
-        st.markdown(f"# {p['isim']}")
-        st.markdown(f"### `{t_code}` • `{p['pozisyon']}` • **{p['fiyat']}M**")
+        st.markdown(f"<h2 style='margin:0 0 6px 0;'>{p['isim']}</h2>", unsafe_allow_html=True)
+        st.markdown(f"<span class='badge badge-pos'>{p['pozisyon']}</span> <strong style='font-size:1.1rem; margin-left:8px;'>{p['fiyat']}M</strong>", unsafe_allow_html=True)
+        st.write("")
         if logo_url:
-            st.image(logo_url, width=75)
+            st.image(logo_url, width=65)
             
     with c_status:
         st.write("")
         if p["durum"] == "Sakat":
-            st.error("🔴 Sakat")
+            st.markdown("<span class='badge badge-out'>OUT • SAKAT</span>", unsafe_allow_html=True)
         elif "Şüpheli" in p["durum"]:
-            st.warning(f"🟡 {p['durum']}")
+            st.markdown(f"<span class='badge badge-dtd'>DTD • {p['durum']}</span>", unsafe_allow_html=True)
         else:
-            st.success("🟢 Sağlıklı")
+            st.markdown("<span class='badge badge-active'>ACTIVE • SAĞLIKLI</span>", unsafe_allow_html=True)
             
+        st.write("")
         if p.get("mac_kacirma") == "Sık Maç Kaçırıyor":
-            st.error("⚠️ Sık Kaçırıyor")
+            st.markdown("<span class='badge badge-waste'>DEVAMSIZLIK RİSKİ</span>", unsafe_allow_html=True)
         else:
-            st.info("🛡️ Düzenli")
+            st.markdown("<span class='badge badge-clean'>İSTİKRARLI</span>", unsafe_allow_html=True)
 
     st.markdown("---")
     
-    # Kadro Ekleme / Çıkarma Butonu (TAKIM KOTASI KONTROLÜ İLE)
     btn_c1, _ = st.columns([2.5, 2])
     with btn_c1:
         if isim in suanki_kadro_isimler:
@@ -186,7 +304,7 @@ def oyuncu_popup(isim):
             if len(suanki_kadro_isimler) >= 10:
                 st.caption("⚠️ Kadro dolu (10/10). Eklemek için birini çıkarmalısınız.")
             elif takimdaki_mevcut_sayi >= 2:
-                st.error(f"🚫 **Takım Kotası Dolu:** Kadronuzda zaten 2 `{oyuncunun_takimi}` oyuncusu var! (Kural: Max 2)")
+                st.error(f"🚫 Takım Kotası Dolu: Zaten 2 {oyuncunun_takimi} oyuncusu var.")
             else:
                 if st.button("🟢 Bu Oyuncuyu Kadroya Ekle", use_container_width=True):
                     suanki_kadro_isimler.append(isim)
@@ -194,7 +312,7 @@ def oyuncu_popup(isim):
                     st.rerun()
 
     st.markdown("---")
-    st.markdown("### 📅 Yaklaşan Fikstür")
+    st.markdown("##### 📅 FİKSTÜR VE B2B YÜKÜ")
     f_col1, f_col2 = st.columns(2)
     with f_col1:
         st.metric(label=f"Bu Hafta (GW{GW_NOW})", value=f"{p[f'gw{GW_NOW}_mac']} Maç", delta=f"B2B: {p[f'gw{GW_NOW}_b2b']}", delta_color="off")
@@ -202,7 +320,7 @@ def oyuncu_popup(isim):
         st.metric(label=f"Gelecek Hafta (GW{GW_NEXT})", value=f"{p[f'gw{GW_NEXT}_mac']} Maç", delta=f"B2B: {p[f'gw{GW_NEXT}_b2b']}", delta_color="off")
 
     st.markdown("---")
-    st.markdown("### 📊 Performans & Form Eğilimi (Son 5 Maç)")
+    st.markdown("##### 📊 SEZON VE FORM KARŞILAŞTIRMASI (SON 5 MAÇ)")
     
     def format_delta(sezon_val, form_val):
         if sezon_val == 0 and form_val == 0: return "—"
@@ -211,7 +329,7 @@ def oyuncu_popup(isim):
 
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Süre (Dk)", f"{p.get('f_dakika', 0.0):.1f}", delta=format_delta(p.get("dakika", 0.0), p.get("f_dakika", 0.0)))
-    c2.metric("Fantezi Puanı", f"{p.get('f_ort_puan', 0.0):.1f}", delta=format_delta(p.get("ort_puan", 0.0), p.get("f_ort_puan", 0.0)))
+    c2.metric("Puan", f"{p.get('f_ort_puan', 0.0):.1f}", delta=format_delta(p.get("ort_puan", 0.0), p.get("f_ort_puan", 0.0)))
     c3.metric("Sayı", f"{p.get('f_sayi', 0.0):.1f}", delta=format_delta(p.get("sayi", 0.0), p.get("f_sayi", 0.0)))
     c4.metric("Asist", f"{p.get('f_asist', 0.0):.1f}", delta=format_delta(p.get("asist", 0.0), p.get("f_asist", 0.0)))
 
@@ -220,11 +338,11 @@ def oyuncu_popup(isim):
     c6.metric("Top Çalma", f"{p.get('f_top_calma', 0.0):.1f}", delta=format_delta(p.get("top_calma", 0.0), p.get("f_top_calma", 0.0)))
     c7.metric("Blok", f"{p.get('f_blok', 0.0):.1f}", delta=format_delta(p.get("blok", 0.0), p.get("f_blok", 0.0)))
 
-# --- ÜST ARAMA ÇUBUĞU ---
+# --- ÜST OYUNCU ARAMA ---
 search_col1, search_col2 = st.columns([5, 1])
 with search_col1:
     secilen_oyuncu = st.selectbox(
-        "Tüm NBA Havuzunda Oyuncu Ara:",
+        "Oyuncu Ara:",
         options=["--- Oyuncu Ara veya İncele ---"] + all_names,
         index=0,
         label_visibility="collapsed"
@@ -239,16 +357,14 @@ if secilen_oyuncu != "--- Oyuncu Ara veya İncele ---":
         st.session_state["son_aranan"] = secilen_oyuncu
         oyuncu_popup(secilen_oyuncu)
 
-st.markdown("---")
+st.write("")
 
 kadro_df = df[df["isim"].isin(suanki_kadro_isimler)].copy()
 bc_toplam = len(kadro_df[kadro_df["pozisyon"] == "BC"])
 fc_toplam = len(kadro_df[kadro_df["pozisyon"] == "FC"])
-
-# Takım Sınırı Aşımı Kontrolü
 fazla_takimlar = [t for t, c in kadro_df["takim"].value_counts().items() if c > 2]
 
-# --- GW2 ÇAKIŞMA / İSRAF HESAPLAMA ---
+# --- GW2 İSRAF HESAPLAMA ---
 oyuncu_israf = {isim: 0 for isim in suanki_kadro_isimler}
 if len(kadro_df) == 10:
     for day_col in hesaplayici.DAY_COLS_GW2:
@@ -270,43 +386,77 @@ if len(kadro_df) == 10:
 
 kadro_df["gw2_israf"] = kadro_df["isim"].map(oyuncu_israf).fillna(0).astype(int)
 
-# --- ÜST METRİKLER ---
+# --- 3. SCOREBOARD METRİK ŞERİDİ ---
 harcanan = round(kadro_df["fiyat"].sum(), 1)
 kasa = round(100.0 - harcanan, 1)
 efektif_gw1 = hesaplayici.hesapla_efektif_mac(kadro_df, hesaplayici.DAY_COLS_GW1) if len(kadro_df) == 10 else 0
 efektif_gw2 = hesaplayici.hesapla_efektif_mac(kadro_df, hesaplayici.DAY_COLS_GW2) if len(kadro_df) == 10 else 0
 
-col_k1, col_k2, col_k3, col_k4, col_k5 = st.columns([1.1, 1, 1.2, 1.2, 1.2])
-with col_k1:
-    st.metric("Kadro Maliyeti", f"{harcanan:.1f}M", f"{len(kadro_df)}/10 Oyuncu", delta_color="off")
-with col_k2:
-    st.metric("Serbest Kasa", f"{kasa:.1f}M", "Kullanılabilir", delta_color="normal" if kasa >= 0 else "inverse")
-with col_k3:
-    if bc_toplam == 5 and fc_toplam == 5:
-        st.metric("Mevki Dengesi", f"{bc_toplam} BC / {fc_toplam} FC", "✅ Kurala Uygun", delta_color="normal")
-    else:
-        st.metric("Mevki Dengesi", f"{bc_toplam} BC / {fc_toplam} FC", "⚠️ Hatalı Dağılım", delta_color="inverse")
-with col_k4:
-    st.metric("Sahada Maç (GW1)", f"{efektif_gw1} / 30", "Bu Hafta Aktif", delta_color="off")
-with col_k5:
-    st.metric("Sahada Maç (GW2)", f"{efektif_gw2} / 30", "Gelecek Hafta Aktif", delta_color="off")
+m1, m2, m3, m4, m5 = st.columns(5)
 
-st.markdown("---")
+with m1:
+    st.markdown(f"""
+    <div class="metric-card">
+        <div class="metric-label">Kadro Maliyeti</div>
+        <div class="metric-value">{harcanan:.1f}M</div>
+        <div class="metric-sub">{len(kadro_df)} / 10 Oyuncu</div>
+    </div>
+    """, unsafe_allow_html=True)
 
-# --- AKTİF KADRO TABLOSU ---
-st.subheader(f"📋 {aktif_menajer} Kadrosu ({len(kadro_df)} / 10)")
+with m2:
+    kasa_cls = "success" if kasa >= 0 else "danger"
+    st.markdown(f"""
+    <div class="metric-card">
+        <div class="metric-label">Kullanılabilir Kasa</div>
+        <div class="metric-value">{kasa:.1f}M</div>
+        <div class="metric-sub {kasa_cls}">{'Bütçe Dengeli' if kasa >= 0 else 'Bütçe Aşıldı'}</div>
+    </div>
+    """, unsafe_allow_html=True)
 
-# Eksik Kadro, Mevki Uyarısı veya Takım Limiti Uyarıları
+with m3:
+    mevki_ok = (bc_toplam == 5 and fc_toplam == 5)
+    mevki_cls = "success" if mevki_ok else "danger"
+    st.markdown(f"""
+    <div class="metric-card">
+        <div class="metric-label">Mevki Dengesi</div>
+        <div class="metric-value">{bc_toplam}B / {fc_toplam}F</div>
+        <div class="metric-sub {mevki_cls}">{'5 BC - 5 FC Tam' if mevki_ok else 'Dengesiz Dağılım'}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with m4:
+    st.markdown(f"""
+    <div class="metric-card">
+        <div class="metric-label">Sahada Maç (GW1)</div>
+        <div class="metric-value">{efektif_gw1} / 30</div>
+        <div class="metric-sub">Bu Hafta Aktif</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with m5:
+    st.markdown(f"""
+    <div class="metric-card">
+        <div class="metric-label">Sahada Maç (GW2)</div>
+        <div class="metric-value">{efektif_gw2} / 30</div>
+        <div class="metric-sub">Gelecek Hafta Aktif</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+st.write("")
+
+# --- 4. KADRO YÖNETİMİ VE TABLO ---
+st.markdown(f"#### 📋 {aktif_menajer.upper()} KADROSU")
+
 if len(kadro_df) < 10:
-    st.warning(f"⚠️ Kadronuzda eksik var ({len(kadro_df)}/10). Yukarıdaki arama çubuğundan oyuncu ekleyebilirsiniz.")
+    st.warning(f"Kadronuzda {10 - len(kadro_df)} oyuncu eksik.")
 elif bc_toplam != 5 or fc_toplam != 5:
-    st.error(f"⚠️ **Mevki Uyarısı:** Kadronuzda **{bc_toplam} BC** ve **{fc_toplam} FC** bulunuyor. Kadro tam **5 BC** ve **5 FC** olmalıdır!")
+    st.error(f"Mevki Dağılımı Hatası: Kadro 5 BC ve 5 FC olmalıdır (Şu an: {bc_toplam} BC / {fc_toplam} FC).")
 
 if fazla_takimlar:
     for t_hatali in fazla_takimlar:
-        st.error(f"🚫 **Takım Limiti Uyarısı:** Kadronuzda `{t_hatali}` takımından **{kadro_df['takim'].value_counts()[t_hatali]} oyuncu** var! Resmi kurala göre bir takımdan en fazla 2 oyuncu alınabilir.")
+        st.error(f"Takım Limiti Aşımı: {t_hatali} takımından {kadro_df['takim'].value_counts()[t_hatali]} oyuncu var (Max 2).")
 
-sort_col1, _ = st.columns([2, 4])
+sort_col1, _ = st.columns([2.5, 3.5])
 with sort_col1:
     sirala_kriter = st.selectbox(
         "Sıralama Ölçütü:",
@@ -319,7 +469,8 @@ with sort_col1:
             f"GW{GW_NOW} Maç Sayısı (Çoktan Aza)",
             f"GW{GW_NEXT} Maç Sayısı (Çoktan Aza)"
         ],
-        index=0
+        index=0,
+        label_visibility="collapsed"
     )
 
 if sirala_kriter == "GW2 En Çok Çakışanlar (Önce Satılacaklar)":
@@ -337,45 +488,53 @@ elif sirala_kriter == f"GW{GW_NOW} Maç Sayısı (Çoktan Aza)":
 elif sirala_kriter == f"GW{GW_NEXT} Maç Sayısı (Çoktan Aza)":
     kadro_df = kadro_df.sort_values(by=[f"gw{GW_NEXT}_mac", "fiyat"], ascending=[False, False])
 
-h_c1, h_c2, h_c3, h_c4, h_c5, h_c6, h_c7 = st.columns([2.3, 0.9, 1.0, 1.3, 1.3, 2.5, 0.7])
-with h_c1: st.caption("**OYUNCU / TAKIM**")
-with h_c2: st.caption("**MEVKİ**")
-with h_c3: st.caption("**FİYAT**")
-with h_c4: st.caption(f"**GW{GW_NOW} (B2B)**")
-with h_c5: st.caption(f"**GW{GW_NEXT} (B2B)**")
-with h_c6: st.caption("**DURUM / GW2 ÇAKIŞMA RAPORU**")
-with h_c7: st.caption("**İŞLEM**")
+# Tablo Başlıkları
+h1, h2, h3, h4, h5, h6, h7 = st.columns([2.6, 0.9, 1.1, 1.2, 1.2, 2.3, 0.7])
+with h1: st.caption("OYUNCU")
+with h2: st.caption("MEVKİ")
+with h3: st.caption("FİYAT")
+with h4: st.caption(f"GW{GW_NOW}")
+with h5: st.caption(f"GW{GW_NEXT}")
+with h6: st.caption("DURUM / GW2 İSRAF")
+with h7: st.caption("İŞLEM")
 
-st.divider()
+st.markdown("<hr style='margin:2px 0 10px 0; border-color:#1e293b;'>", unsafe_allow_html=True)
 
 for idx, p in kadro_df.iterrows():
-    c1, c2, c3, c4, c5, c6, c7 = st.columns([2.3, 0.9, 1.0, 1.3, 1.3, 2.5, 0.7])
+    c1, c2, c3, c4, c5, c6, c7 = st.columns([2.6, 0.9, 1.1, 1.2, 1.2, 2.3, 0.7])
     
     with c1:
-        st.markdown(f"**{p['isim']}**  \n`{p['takim']}`")
+        t_logo = TEAM_LOGOS.get(p['takim'], "")
+        st.markdown(f"""
+        <div style="display:flex; align-items:center; gap:8px;">
+            <img src="{t_logo}" width="22" style="vertical-align:middle;">
+            <strong>{p['isim']}</strong>
+        </div>
+        """, unsafe_allow_html=True)
     with c2:
-        st.markdown(f"**{p['pozisyon']}**")
+        st.markdown(f"<span class='badge badge-pos'>{p['pozisyon']}</span>", unsafe_allow_html=True)
     with c3:
         st.markdown(f"**{p['fiyat']}M**")
     with c4:
-        b2b1_icon = "⚠️" if p[f"gw{GW_NOW}_b2b"] == "Var ⚠️" else ""
-        st.markdown(f"**{p[f'gw{GW_NOW}_mac']}** {b2b1_icon}")
+        b2b1_badge = f"<span class='badge badge-b2b'>B2B</span>" if p[f"gw{GW_NOW}_b2b"] == "Var ⚠️" else ""
+        st.markdown(f"**{p[f'gw{GW_NOW}_mac']}** {b2b1_badge}", unsafe_allow_html=True)
     with c5:
-        b2b2_icon = "⚠️" if p[f"gw{GW_NEXT}_b2b"] == "Var ⚠️" else ""
-        st.markdown(f"**{p[f'gw{GW_NEXT}_mac']}** {b2b2_icon}")
+        b2b2_badge = f"<span class='badge badge-b2b'>B2B</span>" if p[f"gw{GW_NEXT}_b2b"] == "Var ⚠️" else ""
+        st.markdown(f"**{p[f'gw{GW_NEXT}_mac']}** {b2b2_badge}", unsafe_allow_html=True)
     with c6:
-        alarmlar = []
-        if p["durum"] == "Sakat": alarmlar.append("🔴 Sakat")
-        elif "Şüpheli" in p["durum"]: alarmlar.append(f"🟡 {p['durum']}")
-        if p.get("mac_kacirma") == "Sık Maç Kaçırıyor": alarmlar.append("⚠️ Devamsız")
+        rozetler = []
+        if p["durum"] == "Sakat":
+            rozetler.append("<span class='badge badge-out'>OUT</span>")
+        elif "Şüpheli" in p["durum"]:
+            rozetler.append("<span class='badge badge-dtd'>DTD</span>")
         
         israf_sayisi = p.get("gw2_israf", 0)
         if israf_sayisi > 0:
-            alarmlar.append(f"⚠️ **{israf_sayisi} Maçı Bench'te Çöp**")
+            rozetler.append(f"<span class='badge badge-waste'>{israf_sayisi} BENCH</span>")
         else:
-            alarmlar.append("💎 **0 Çakışma (Tam Katkı)**")
+            rozetler.append("<span class='badge badge-clean'>TAM KATKI</span>")
 
-        st.markdown(" | ".join(alarmlar))
+        st.markdown(" ".join(rozetler), unsafe_allow_html=True)
         
     with c7:
         b_col1, b_col2 = st.columns(2)
@@ -388,15 +547,17 @@ for idx, p in kadro_df.iterrows():
                 kadroyu_kaydet()
                 st.rerun()
             
-    st.divider()
+    st.markdown("<hr style='margin:4px 0 6px 0; border-color:#172033;'>", unsafe_allow_html=True)
 
-# --- GÜNLÜK MAÇ & SAHAYA ÇIKIŞ MATRİSİ ---
+st.write("")
+
+# --- 5. GÜNLÜK MAÇ & SAHAYA ÇIKIŞ MATRİSİ ---
 def matris_olustur(day_cols_list):
     matris_data = []
     for d_idx, day_col in enumerate(day_cols_list, start=1):
         maci_olanlar = kadro_df[kadro_df[day_col] > 0] if day_col in kadro_df.columns else pd.DataFrame()
         if maci_olanlar.empty:
-            matris_data.append({"Gün": f"Day {d_idx}", "Maçı Olan": 0, "Sahaya Çıkan": "0/5 Boş ❌", "BC": "—", "FC": "—"})
+            matris_data.append({"Gün": f"Day {d_idx}", "Maçı Olan": 0, "Sahaya Çıkan": "0/5 Boş", "BC": "—", "FC": "—"})
             continue
 
         bc_oynayanlar = maci_olanlar[maci_olanlar["pozisyon"] == "BC"]["isim"].tolist()
@@ -407,7 +568,7 @@ def matris_olustur(day_cols_list):
         opt2 = min(bc_count, 2) + min(fc_count, 3)
         sahaya_cikan = min(5, max(opt1, opt2))
 
-        durum_badge = f"{sahaya_cikan}/5 Dolu ✅" if sahaya_cikan == 5 else f"{sahaya_cikan}/5 Eksik ⚠️"
+        durum_badge = f"{sahaya_cikan}/5 Dolu" if sahaya_cikan == 5 else f"{sahaya_cikan}/5 Eksik"
         bc_kisalar = [ad.split()[-1] for ad in bc_oynayanlar]
         fc_kisalar = [ad.split()[-1] for ad in fc_oynayanlar]
 
@@ -420,26 +581,26 @@ def matris_olustur(day_cols_list):
         })
     return pd.DataFrame(matris_data)
 
-with st.expander("📅 Günlük Maç Dağılımı ve Saha Doluluk Matrisi", expanded=True):
-    tab_gw1, tab_gw2 = st.tabs(["📅 Bu Hafta (Gameweek 1)", "📅 Gelecek Hafta (Gameweek 2)"])
+with st.expander("📅 GÜNLÜK MAÇ VE SAHA DAĞILIM MATRİSİ", expanded=True):
+    tab_gw1, tab_gw2 = st.tabs(["Bu Hafta (GW1)", "Gelecek Hafta (GW2)"])
     with tab_gw1:
         st.dataframe(matris_olustur(hesaplayici.DAY_COLS_GW1), use_container_width=True, hide_index=True)
     with tab_gw2:
         st.dataframe(matris_olustur(hesaplayici.DAY_COLS_GW2), use_container_width=True, hide_index=True)
 
-st.markdown("---")
+st.write("")
 
-# --- TRANSFER SİMÜLATÖRÜ ---
-st.subheader("🔄 Akıllı Transfer Simülatörü")
+# --- 6. TRANSFER SİMÜLATÖRÜ ---
+st.markdown("#### 🔄 AKILLI TRANSFER SİMÜLATÖRÜ")
 
 if len(kadro_df) != 10:
     st.info("Transfer simülasyonu için kadronuzda tam 10 oyuncu bulunmalıdır.")
 elif bc_toplam != 5 or fc_toplam != 5:
-    st.error("Transfer simülatörünü çalıştırmadan önce kadronuzu 5 BC ve 5 FC kuralına uygun hale getiriniz.")
+    st.error("Kadronuzu 5 BC ve 5 FC kuralına uygun hale getiriniz.")
 elif fazla_takimlar:
-    st.error("Transfer simülatörünü çalıştırmadan önce aynı takımdan en fazla 2 oyuncu kuralını sağlayınız.")
+    st.error("Aynı takımdan en fazla 2 oyuncu kuralını sağlayınız.")
 else:
-    sim_gw_col1, _ = st.columns([2, 3])
+    sim_gw_col1, _ = st.columns([2.5, 3.5])
     with sim_gw_col1:
         hedef_gw = st.radio("Optimizasyon Hedefi:", [f"Bu Hafta (GW{GW_NOW})", f"Gelecek Hafta (GW{GW_NEXT})"], horizontal=True)
         aktif_hedef_num = GW_NOW if "GW1" in hedef_gw else GW_NEXT
@@ -450,9 +611,9 @@ else:
         max_selections=2
     )
 
-    if st.button("En İyi Alternatifleri Getir 🚀"):
+    if st.button("Alternatifleri Hesapla 🚀"):
         if not satilacaklar:
-            st.info("Lütfen takımdan satmak istediğiniz en az bir oyuncu seçin.")
+            st.info("Lütfen en az bir oyuncu seçin.")
         else:
             oneriler = hesaplayici.transferleri_hesapla(df, kadro_df, satilacaklar, kasa, suanki_kadro_isimler, aktif_gw=aktif_hedef_num)
             if oneriler:
@@ -460,17 +621,17 @@ else:
                 st.session_state["aktif_satilanlar"] = satilacaklar
             else:
                 st.session_state.pop("son_oneriler", None)
-                st.error("Bütçe, mevki veya takım sınırına uygun alternatif bulunamadı!")
+                st.error("Kriterlere uygun alternatif bulunamadı.")
 
     if "son_oneriler" in st.session_state:
-        st.success("Alternatifler:")
+        st.write("")
         for idx, o in enumerate(st.session_state["son_oneriler"], start=1):
             c_yazi, c_butonlar = st.columns([3, 2])
             with c_yazi:
                 st.markdown(f"**#{idx} {o['baslik']}**")
-                st.caption(f"🔴 **Satılan:** {o['satilan_dokum']} (+{o['satilan_gelir']}M) | "
-                           f"🟢 **Alınan:** {o['gelen_dokum']} (-{o['gelen_maliyet']}M) | "
-                           f"💵 **Kalan Kasa:** **{o['kalan_butce']}M**")
+                st.caption(f"Satılan: {o['satilan_dokum']} (+{o['satilan_gelir']}M) | "
+                           f"Alınan: {o['gelen_dokum']} (-{o['gelen_maliyet']}M) | "
+                           f"Kalan: {o['kalan_butce']}M")
             
             with c_butonlar:
                 btn_cols = st.columns(len(o.get("isimler", [])) + 1)
@@ -481,12 +642,12 @@ else:
                             oyuncu_popup(p_name)
                 
                 with btn_cols[-1]:
-                    if st.button("✅ Uygula", key=f"apply_{idx}", help="Bu transferi doğrudan kadrona uygula"):
+                    if st.button("✅ Uygula", key=f"apply_{idx}", help="Transferi kadroya uygula"):
                         satilan_liste = st.session_state.get("aktif_satilanlar", satilacaklar)
                         yeni_liste = [n for n in suanki_kadro_isimler if n not in satilan_liste]
                         yeni_liste.extend(o["isimler"])
                         st.session_state[f"kadro_{aktif_menajer}"] = yeni_liste
                         kadroyu_kaydet()
                         st.session_state.pop("son_oneriler", None)
-                        st.success("Transfer kadroya başarıyla uygulandı!")
+                        st.success("Transfer uygulandı!")
                         st.rerun()
