@@ -127,87 +127,136 @@ def kadroyu_kaydet():
 GW_NOW = 1
 GW_NEXT = 2
 
-# --- OYUNCU DETAY POP-UP MODAL ---
+# --- OYUNCU DETAY POP-UP MODAL (DENGELİ & BÜYÜTÜLMÜŞ KART TASARIMI) ---
 @st.dialog("Oyuncu Detay Kartı", width="large")
 def oyuncu_popup(isim):
-    p = df[df["isim"] == isim].iloc[0]
-    p_code = str(p.get("code", "")).replace(".0", "").strip()
-    t_code = p.get("takim", "")
-    
-    foto_url = f"https://ak-static.cms.nba.com/wp-content/uploads/headshots/nba/latest/260x190/{p_code}.png" if p_code else None
-    logo_url = TEAM_LOGOS.get(t_code, None)
+  p = df[df["isim"] == isim].iloc[0]
+  p_code = str(p.get("code", "")).replace(".0", "").strip()
+  t_code = p.get("takim", "")
 
-    c_img, c_info, c_status = st.columns([1.3, 2.4, 1.3])
-    
-    with c_img:
-        if foto_url:
-            st.image(foto_url, width=130)
-        else:
-            st.markdown("👤 *Fotoğraf Yok*")
-            
-    with c_info:
-        st.markdown(f"## {p['isim']}")
-        st.markdown(f"**Takım:** `{t_code}` | **Mevki:** `{p['pozisyon']}` | **Fiyat:** **{p['fiyat']}M**")
-        if logo_url:
-            st.image(logo_url, width=65)
-            
-    with c_status:
-        if p["durum"] == "Sakat":
-            st.error("🔴 Sakat")
-        elif "Şüpheli" in p["durum"]:
-            st.warning(f"🟡 {p['durum']}")
-        else:
-            st.success("🟢 Sağlıklı")
-            
-        if p.get("mac_kacirma") == "Sık Maç Kaçırıyor":
-            st.error("⚠️ Sık Kaçırıyor")
-        else:
-            st.info("🛡️ Düzenli")
+  foto_url = (
+      "https://ak-static.cms.nba.com/wp-content/uploads/headshots/nba/latest/260x190/"
+      f"{p_code}.png"
+      if p_code
+      else None
+  )
+  logo_url = TEAM_LOGOS.get(t_code, None)
 
-    st.markdown("---")
-    
-    btn_c1, _ = st.columns([2, 2])
-    with btn_c1:
-        if isim in suanki_kadro_isimler:
-            if st.button("❌ Bu Oyuncuyu Kadrodan Çıkar", use_container_width=True):
-                suanki_kadro_isimler.remove(isim)
-                kadroyu_kaydet()
-                st.rerun()
-        else:
-            if len(suanki_kadro_isimler) < 10:
-                if st.button("🟢 Bu Oyuncuyu Kadroya Ekle", use_container_width=True):
-                    suanki_kadro_isimler.append(isim)
-                    kadroyu_kaydet()
-                    st.rerun()
-            else:
-                st.caption("⚠️ Kadro dolu (10/10). Eklemek için birini çıkarmalısınız.")
+  # Daha dengeli sütun dağılımı: Fotoğraf (2) - Bilgiler ve Logo (3.5) - Rozetler (2)
+  c_img, c_info, c_status = st.columns([2, 3.5, 2])
 
-    st.markdown("---")
-    st.markdown("### 📅 Yaklaşan Fikstür")
-    f_col1, f_col2 = st.columns(2)
-    with f_col1:
-        st.metric(label=f"Bu Hafta (GW{GW_NOW})", value=f"{p[f'gw{GW_NOW}_mac']} Maç", delta=f"B2B: {p[f'gw{GW_NOW}_b2b']}", delta_color="off")
-    with f_col2:
-        st.metric(label=f"Gelecek Hafta (GW{GW_NEXT})", value=f"{p[f'gw{GW_NEXT}_mac']} Maç", delta=f"B2B: {p[f'gw{GW_NEXT}_b2b']}", delta_color="off")
+  with c_img:
+    if foto_url:
+      st.image(foto_url, width=180)
+    else:
+      st.markdown("👤 *Fotoğraf Yok*")
 
-    st.markdown("---")
-    st.markdown("### 📊 Performans & Form Eğilimi (Son 5 Maç)")
-    
-    def format_delta(sezon_val, form_val):
-        if sezon_val == 0 and form_val == 0: return "—"
-        fark = round(form_val - sezon_val, 1)
-        return f"+{fark}" if fark > 0 else f"{fark}" if fark < 0 else "0.0"
+  with c_info:
+    st.markdown(f"# {p['isim']}")
+    st.markdown(
+        f"### `{t_code}` • `{p['pozisyon']}` • **{p['fiyat']}M**"
+    )
+    if logo_url:
+      st.image(logo_url, width=75)
 
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Süre (Dk)", f"{p.get('f_dakika', 0.0):.1f}", delta=format_delta(p.get("dakika", 0.0), p.get("f_dakika", 0.0)))
-    c2.metric("Fantezi Puanı", f"{p.get('f_ort_puan', 0.0):.1f}", delta=format_delta(p.get("ort_puan", 0.0), p.get("f_ort_puan", 0.0)))
-    c3.metric("Sayı", f"{p.get('f_sayi', 0.0):.1f}", delta=format_delta(p.get("sayi", 0.0), p.get("f_sayi", 0.0)))
-    c4.metric("Asist", f"{p.get('f_asist', 0.0):.1f}", delta=format_delta(p.get("asist", 0.0), p.get("f_asist", 0.0)))
+  with c_status:
+    st.write("")  # Hafif aşağı indirmek için
+    if p["durum"] == "Sakat":
+      st.error("🔴 Sakat")
+    elif "Şüpheli" in p["durum"]:
+      st.warning(f"🟡 {p['durum']}")
+    else:
+      st.success("🟢 Sağlıklı")
 
-    c5, c6, c7 = st.columns(3)
-    c5.metric("Ribaund", f"{p.get('f_ribaund', 0.0):.1f}", delta=format_delta(p.get("ribaund", 0.0), p.get("f_ribaund", 0.0)))
-    c6.metric("Top Çalma", f"{p.get('f_top_calma', 0.0):.1f}", delta=format_delta(p.get("top_calma", 0.0), p.get("f_top_calma", 0.0)))
-    c7.metric("Blok", f"{p.get('f_blok', 0.0):.1f}", delta=format_delta(p.get("blok", 0.0), p.get("f_blok", 0.0)))
+    if p.get("mac_kacirma") == "Sık Maç Kaçırıyor":
+      st.error("⚠️ Sık Kaçırıyor")
+    else:
+      st.info("🛡️ Düzenli")
+
+  st.markdown("---")
+
+  # Kadro Ekleme / Çıkarma Butonu
+  btn_c1, _ = st.columns([2.5, 2])
+  with btn_c1:
+    if isim in suanki_kadro_isimler:
+      if st.button("❌ Bu Oyuncuyu Kadrodan Çıkar", use_container_width=True):
+        suanki_kadro_isimler.remove(isim)
+        kadroyu_kaydet()
+        st.rerun()
+    else:
+      if len(suanki_kadro_isimler) < 10:
+        if st.button("🟢 Bu Oyuncuyu Kadroya Ekle", use_container_width=True):
+          suanki_kadro_isimler.append(isim)
+          kadroyu_kaydet()
+          st.rerun()
+      else:
+        st.caption("⚠️ Kadro dolu (10/10). Eklemek için birini çıkarmalısınız.")
+
+  st.markdown("---")
+  st.markdown("### 📅 Yaklaşan Fikstür")
+  f_col1, f_col2 = st.columns(2)
+  with f_col1:
+    st.metric(
+        label=f"Bu Hafta (GW{GW_NOW})",
+        value=f"{p[f'gw{GW_NOW}_mac']} Maç",
+        delta=f"B2B: {p[f'gw{GW_NOW}_b2b']}",
+        delta_color="off",
+    )
+  with f_col2:
+    st.metric(
+        label=f"Gelecek Hafta (GW{GW_NEXT})",
+        value=f"{p[f'gw{GW_NEXT}_mac']} Maç",
+        delta=f"B2B: {p[f'gw{GW_NEXT}_b2b']}",
+        delta_color="off",
+    )
+
+  st.markdown("---")
+  st.markdown("### 📊 Performans & Form Eğilimi (Son 5 Maç)")
+
+  def format_delta(sezon_val, form_val):
+    if sezon_val == 0 and form_val == 0:
+      return "—"
+    fark = round(form_val - sezon_val, 1)
+    return f"+{fark}" if fark > 0 else f"{fark}" if fark < 0 else "0.0"
+
+  c1, c2, c3, c4 = st.columns(4)
+  c1.metric(
+      "Süre (Dk)",
+      f"{p.get('f_dakika', 0.0):.1f}",
+      delta=format_delta(p.get("dakika", 0.0), p.get("f_dakika", 0.0)),
+  )
+  c2.metric(
+      "Fantezi Puanı",
+      f"{p.get('f_ort_puan', 0.0):.1f}",
+      delta=format_delta(p.get("ort_puan", 0.0), p.get("f_ort_puan", 0.0)),
+  )
+  c3.metric(
+      "Sayı",
+      f"{p.get('f_sayi', 0.0):.1f}",
+      delta=format_delta(p.get("sayi", 0.0), p.get("f_sayi", 0.0)),
+  )
+  c4.metric(
+      "Asist",
+      f"{p.get('f_asist', 0.0):.1f}",
+      delta=format_delta(p.get("asist", 0.0), p.get("f_asist", 0.0)),
+  )
+
+  c5, c6, c7 = st.columns(3)
+  c5.metric(
+      "Ribaund",
+      f"{p.get('f_ribaund', 0.0):.1f}",
+      delta=format_delta(p.get("ribaund", 0.0), p.get("f_ribaund", 0.0)),
+  )
+  c6.metric(
+      "Top Çalma",
+      f"{p.get('f_top_calma', 0.0):.1f}",
+      delta=format_delta(p.get("top_calma", 0.0), p.get("f_top_calma", 0.0)),
+  )
+  c7.metric(
+      "Blok",
+      f"{p.get('f_blok', 0.0):.1f}",
+      delta=format_delta(p.get("blok", 0.0), p.get("f_blok", 0.0)),
+  )
 
 # --- ÜST ARAMA ÇUBUĞU ---
 search_col1, search_col2 = st.columns([5, 1])
