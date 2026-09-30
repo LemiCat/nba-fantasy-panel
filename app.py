@@ -25,7 +25,6 @@ st.markdown("""
         color: #e2e8f0;
     }
     
-    /* Header Alanı */
     .nba-header {
         display: flex;
         align-items: center;
@@ -44,7 +43,6 @@ st.markdown("""
         margin: 0;
     }
 
-    /* Scoreboard Metrik Kartları */
     .metric-card {
         background: #111827;
         border: 1px solid #1f2937;
@@ -79,7 +77,6 @@ st.markdown("""
     .metric-sub.success { color: #10b981; }
     .metric-sub.danger { color: #ef4444; }
 
-    /* Rozetler (Pills / Badges) */
     .badge {
         display: inline-flex;
         align-items: center;
@@ -98,7 +95,16 @@ st.markdown("""
     .badge-clean { background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.25); }
     .badge-pos { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; font-size: 0.7rem; }
 
-    /* Tablo İçi Kompakt İşlem Butonları */
+    .budget-info-box {
+        background: #111827;
+        border: 1px solid #1e293b;
+        border-left: 4px solid #38bdf8;
+        border-radius: 8px;
+        padding: 10px 16px;
+        margin: 12px 0 16px 0;
+        font-size: 0.88rem;
+    }
+
     div[data-testid="column"] button[kind="secondary"] {
         padding: 3px 6px !important;
         font-size: 0.75rem !important;
@@ -156,12 +162,13 @@ else:
 
 all_names = sorted(df["isim"].unique().tolist())
 
-# --- 2. MENAJER PROFİL SİSTEMİ ---
+# --- 2. MENAJER PROFİL SİSTEMİ (EKLEME & SİLME) ---
 PROFILLER_DOSYASI = "profiller.json"
 if os.path.exists(PROFILLER_DOSYASI):
     try:
         with open(PROFILLER_DOSYASI, "r", encoding="utf-8") as f:
             profiller = json.load(f)
+            if not profiller: profiller = ["Bilal"]
     except Exception:
         profiller = ["Bilal"]
 else:
@@ -172,8 +179,8 @@ default_names = [
     "Joel Embiid", "Zion Williamson", "Walker Kessler", "Jusuf Nurkic", "Tolu Smith"
 ]
 
-# Header Bar
-c_head, c_mgr, c_sync = st.columns([2.8, 1.6, 0.8])
+# Header Bar & Menajer Kontrolü
+c_head, c_mgr, c_del, c_sync = st.columns([2.5, 1.5, 0.4, 0.7])
 with c_head:
     st.markdown("""
     <div class="nba-header">
@@ -187,19 +194,30 @@ with c_head:
 
 with c_mgr:
     secilen_profil = st.selectbox(
-        "Menajer Profili:",
+        "Menajer:",
         options=profiller + ["➕ Yeni Menajer Ekle..."],
         index=0,
         label_visibility="collapsed"
     )
     if secilen_profil == "➕ Yeni Menajer Ekle...":
-        yeni_ad = st.text_input("Yeni Menajer:", placeholder="Örn: Mehmet")
+        yeni_ad = st.text_input("Yeni İsim:", placeholder="Örn: Mehmet")
         if st.button("Kaydet", use_container_width=True):
             if yeni_ad and yeni_ad not in profiller:
                 profiller.append(yeni_ad)
                 with open(PROFILLER_DOSYASI, "w", encoding="utf-8") as f:
                     json.dump(profiller, f, ensure_ascii=False, indent=2)
                 st.rerun()
+
+with c_del:
+    if secilen_profil != "➕ Yeni Menajer Ekle..." and len(profiller) > 1:
+        if st.button("🗑️", help=f"'{secilen_profil}' menajerini ve kadrosunu sil"):
+            profiller.remove(secilen_profil)
+            with open(PROFILLER_DOSYASI, "w", encoding="utf-8") as f:
+                json.dump(profiller, f, ensure_ascii=False, indent=2)
+            k_file = f"kadro_{secilen_profil.lower()}.json"
+            if os.path.exists(k_file):
+                os.remove(k_file)
+            st.rerun()
 
 with c_sync:
     if st.button("🔄 Güncelle", help="NBA API'sinden en güncel verileri çeker", use_container_width=True):
@@ -373,7 +391,7 @@ if len(kadro_df) == 10:
 
 kadro_df["gw2_israf"] = kadro_df["isim"].map(oyuncu_israf).fillna(0).astype(int)
 
-# --- 3. SCOREBOARD METRİK ŞERİDİ (5 BC / 5 FC DÜZELTİLDİ) ---
+# --- 3. SCOREBOARD METRİK ŞERİDİ ---
 harcanan = round(kadro_df["fiyat"].sum(), 1)
 kasa = round(100.0 - harcanan, 1)
 efektif_gw1 = hesaplayici.hesapla_efektif_mac(kadro_df, hesaplayici.DAY_COLS_GW1) if len(kadro_df) == 10 else 0
@@ -475,7 +493,6 @@ elif sirala_kriter == f"GW{GW_NOW} Maç Sayısı (Çoktan Aza)":
 elif sirala_kriter == f"GW{GW_NEXT} Maç Sayısı (Çoktan Aza)":
     kadro_df = kadro_df.sort_values(by=[f"gw{GW_NEXT}_mac", "fiyat"], ascending=[False, False])
 
-# Tablo Başlıkları (İşlem sütun genişliği 1.1'e çıkarıldı)
 h1, h2, h3, h4, h5, h6, h7 = st.columns([2.5, 0.8, 1.0, 1.1, 1.1, 2.4, 1.1])
 with h1: st.caption("OYUNCU")
 with h2: st.caption("MEVKİ")
@@ -577,7 +594,7 @@ with st.expander("📅 GÜNLÜK MAÇ VE SAHA DAĞILIM MATRİSİ", expanded=True)
 
 st.write("")
 
-# --- 6. TRANSFER SİMÜLATÖRÜ ---
+# --- 6. TRANSFER SİMÜLATÖRÜ (SADELEŞTİRİLMİŞ & BÜTÇE ŞERİTLİ) ---
 st.markdown("#### 🔄 AKILLI TRANSFER SİMÜLATÖRÜ")
 
 if len(kadro_df) != 10:
@@ -611,14 +628,24 @@ else:
                 st.error("Kriterlere uygun alternatif bulunamadı.")
 
     if "son_oneriler" in st.session_state:
-        st.write("")
+        # Satılan oyuncuların özet bütçesi (TEK BİR KUTUDA)
+        aktif_satilan_df = kadro_df[kadro_df["isim"].isin(st.session_state["aktif_satilanlar"])]
+        satilan_gelir_toplam = aktif_satilan_df["fiyat"].sum()
+        kullanilabilir_toplam = round(satilan_gelir_toplam + kasa, 1)
+        satilan_isimler_str = " + ".join([f"{row['isim']} ({row['fiyat']}M)" for _, row in aktif_satilan_df.iterrows()])
+
+        st.markdown(f"""
+        <div class="budget-info-box">
+            💼 <strong>Transfer Bütçesi Özeti:</strong> Çıkarılan: <strong>{satilan_isimler_str}</strong> (Gelir: <strong>+{satilan_gelir_toplam:.1f}M</strong>) 
+            • Mevcut Kasa: <strong>{kasa:.1f}M</strong> • Toplam Harcanabilir Bütçe: <strong style="color:#38bdf8;">{kullanilabilir_toplam:.1f}M</strong>
+        </div>
+        """, unsafe_allow_html=True)
+
         for idx, o in enumerate(st.session_state["son_oneriler"], start=1):
-            c_yazi, c_butonlar = st.columns([3, 2])
+            c_yazi, c_butonlar = st.columns([3.2, 1.8])
             with c_yazi:
                 st.markdown(f"**#{idx} {o['baslik']}**")
-                st.caption(f"Satılan: {o['satilan_dokum']} (+{o['satilan_gelir']}M) | "
-                           f"Alınan: {o['gelen_dokum']} (-{o['gelen_maliyet']}M) | "
-                           f"Kalan: {o['kalan_butce']}M")
+                st.caption(f"💵 Transfer Sonrası Kalan Kasa: **{o['kalan_butce']}M**")
             
             with c_butonlar:
                 btn_cols = st.columns(len(o.get("isimler", [])) + 1)
