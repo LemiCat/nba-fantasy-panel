@@ -58,7 +58,7 @@ st.markdown("""
         transform: translateY(-2px);
     }
     .metric-label {
-        font-size: 0.75rem;
+        font-size: 0.72rem;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.5px;
@@ -66,7 +66,7 @@ st.markdown("""
         margin-bottom: 4px;
     }
     .metric-value {
-        font-size: 1.45rem;
+        font-size: 1.35rem;
         font-weight: 800;
         color: #f8fafc;
         line-height: 1.2;
@@ -98,26 +98,13 @@ st.markdown("""
     .badge-clean { background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.25); }
     .badge-pos { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; font-size: 0.7rem; }
 
-    /* Tablo Satır Tasarımı */
-    .player-row {
-        background: #0f172a;
-        border: 1px solid #1e293b;
-        border-radius: 10px;
-        padding: 10px 14px;
-        margin-bottom: 8px;
-        display: flex;
-        align-items: center;
-        transition: background 0.15s ease;
-    }
-    .player-row:hover {
-        background: #172033;
-    }
-    
-    /* Buton İyileştirmeleri */
-    div.stButton > button {
-        border-radius: 8px;
-        font-weight: 600;
-        transition: all 0.15s ease;
+    /* Tablo İçi Kompakt İşlem Butonları */
+    div[data-testid="column"] button[kind="secondary"] {
+        padding: 3px 6px !important;
+        font-size: 0.75rem !important;
+        min-height: 28px !important;
+        line-height: 1 !important;
+        border-radius: 6px !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -278,7 +265,7 @@ def oyuncu_popup(isim):
         if p["durum"] == "Sakat":
             st.markdown("<span class='badge badge-out'>OUT • SAKAT</span>", unsafe_allow_html=True)
         elif "Şüpheli" in p["durum"]:
-            st.markdown(f"<span class='badge badge-dtd'>DTD • {p['durum']}</span>", unsafe_allow_html=True)
+            st.markdown(f"<span class='badge badge-dtd'>ŞÜPHELİ • {p['durum']}</span>", unsafe_allow_html=True)
         else:
             st.markdown("<span class='badge badge-active'>ACTIVE • SAĞLIKLI</span>", unsafe_allow_html=True)
             
@@ -386,7 +373,7 @@ if len(kadro_df) == 10:
 
 kadro_df["gw2_israf"] = kadro_df["isim"].map(oyuncu_israf).fillna(0).astype(int)
 
-# --- 3. SCOREBOARD METRİK ŞERİDİ ---
+# --- 3. SCOREBOARD METRİK ŞERİDİ (5 BC / 5 FC DÜZELTİLDİ) ---
 harcanan = round(kadro_df["fiyat"].sum(), 1)
 kasa = round(100.0 - harcanan, 1)
 efektif_gw1 = hesaplayici.hesapla_efektif_mac(kadro_df, hesaplayici.DAY_COLS_GW1) if len(kadro_df) == 10 else 0
@@ -419,7 +406,7 @@ with m3:
     st.markdown(f"""
     <div class="metric-card">
         <div class="metric-label">Mevki Dengesi</div>
-        <div class="metric-value">{bc_toplam}B / {fc_toplam}F</div>
+        <div class="metric-value">{bc_toplam} BC / {fc_toplam} FC</div>
         <div class="metric-sub {mevki_cls}">{'5 BC - 5 FC Tam' if mevki_ok else 'Dengesiz Dağılım'}</div>
     </div>
     """, unsafe_allow_html=True)
@@ -488,8 +475,8 @@ elif sirala_kriter == f"GW{GW_NOW} Maç Sayısı (Çoktan Aza)":
 elif sirala_kriter == f"GW{GW_NEXT} Maç Sayısı (Çoktan Aza)":
     kadro_df = kadro_df.sort_values(by=[f"gw{GW_NEXT}_mac", "fiyat"], ascending=[False, False])
 
-# Tablo Başlıkları
-h1, h2, h3, h4, h5, h6, h7 = st.columns([2.6, 0.9, 1.1, 1.2, 1.2, 2.3, 0.7])
+# Tablo Başlıkları (İşlem sütun genişliği 1.1'e çıkarıldı)
+h1, h2, h3, h4, h5, h6, h7 = st.columns([2.5, 0.8, 1.0, 1.1, 1.1, 2.4, 1.1])
 with h1: st.caption("OYUNCU")
 with h2: st.caption("MEVKİ")
 with h3: st.caption("FİYAT")
@@ -501,7 +488,7 @@ with h7: st.caption("İŞLEM")
 st.markdown("<hr style='margin:2px 0 10px 0; border-color:#1e293b;'>", unsafe_allow_html=True)
 
 for idx, p in kadro_df.iterrows():
-    c1, c2, c3, c4, c5, c6, c7 = st.columns([2.6, 0.9, 1.1, 1.2, 1.2, 2.3, 0.7])
+    c1, c2, c3, c4, c5, c6, c7 = st.columns([2.5, 0.8, 1.0, 1.1, 1.1, 2.4, 1.1])
     
     with c1:
         t_logo = TEAM_LOGOS.get(p['takim'], "")
@@ -526,7 +513,7 @@ for idx, p in kadro_df.iterrows():
         if p["durum"] == "Sakat":
             rozetler.append("<span class='badge badge-out'>OUT</span>")
         elif "Şüpheli" in p["durum"]:
-            rozetler.append("<span class='badge badge-dtd'>DTD</span>")
+            rozetler.append("<span class='badge badge-dtd'>ŞÜPHELİ</span>")
         
         israf_sayisi = p.get("gw2_israf", 0)
         if israf_sayisi > 0:
@@ -539,10 +526,10 @@ for idx, p in kadro_df.iterrows():
     with c7:
         b_col1, b_col2 = st.columns(2)
         with b_col1:
-            if st.button("🔍", key=f"k_view_{idx}", help="Profili Aç"):
+            if st.button("Detay", key=f"k_view_{idx}", help="Profili Aç", use_container_width=True):
                 oyuncu_popup(p["isim"])
         with b_col2:
-            if st.button("❌", key=f"k_del_{idx}", help="Kadrodan Çıkar"):
+            if st.button("Çıkar", key=f"k_del_{idx}", help="Kadrodan Çıkar", use_container_width=True):
                 suanki_kadro_isimler.remove(p["isim"])
                 kadroyu_kaydet()
                 st.rerun()
