@@ -6,7 +6,27 @@ def get_day_cols(df, gw=1):
     cols = [c for c in df.columns if c.startswith(prefix) and c[len(prefix):].isdigit()]
     return sorted(cols, key=lambda x: int(x[len(prefix):]))
 
+def hesapla_efektif_mac(kadro_df, day_cols):
+    """app.py üst metrikleri için DataFrame tabanlı hesaplayıcı"""
+    toplam_sahada = 0
+    for day_col in day_cols:
+        if day_col not in kadro_df.columns:
+            continue
+        maci_olanlar = kadro_df[kadro_df[day_col] > 0]
+        if maci_olanlar.empty:
+            continue
+
+        bc_count = len(maci_olanlar[maci_olanlar["pozisyon"] == "BC"])
+        fc_count = len(maci_olanlar[maci_olanlar["pozisyon"] == "FC"])
+
+        opt1 = min(bc_count, 3) + min(fc_count, 2)
+        opt2 = min(bc_count, 2) + min(fc_count, 3)
+        toplam_sahada += min(5, max(opt1, opt2))
+
+    return toplam_sahada
+
 def hesapla_efektif_mac_hizli(kadro_records, day_cols):
+    """Simülatör içi döngüler için hafif/yıldırım hızlı sözlük tabanlı hesaplayıcı"""
     toplam_sahada = 0
     for day_col in day_cols:
         bc_count = 0
@@ -42,7 +62,6 @@ def transferleri_hesapla(df, kadro_df, satilacak_isimler, kasa, suanki_kadro_isi
     day_cols = get_day_cols(df, aktif_gw)
     gw_mac_col = f"gw{aktif_gw}_mac"
 
-    # Ön Filtreleme: Sakat olmayan ve o hafta en az 1 maçı olan oyuncular (Hız için kritik)
     havuz = df[
         (~df["isim"].isin(suanki_kadro_isimler)) & 
         (df["durum"] != "Sakat") & 
@@ -83,7 +102,6 @@ def transferleri_hesapla(df, kadro_df, satilacak_isimler, kasa, suanki_kadro_isi
     elif k_sayisi == 2:
         pos1, pos2 = gerekli_pozisyonlar[0], gerekli_pozisyonlar[1]
 
-        # Sadece bütçeye yetebilecek en verimli ilk 40 adayı alarak kombinasyon patlamasını önle
         if pos1 == pos2:
             adaylar = havuz[(havuz["pozisyon"] == pos1) & (havuz["fiyat"] <= (toplam_butce - 4.5))].sort_values(by=[gw_mac_col, "fiyat"], ascending=[False, False]).head(40)
             kombinasyonlar = list(itertools.combinations(adaylar.to_dict("records"), 2))
@@ -97,7 +115,6 @@ def transferleri_hesapla(df, kadro_df, satilacak_isimler, kasa, suanki_kadro_isi
             if maliyet > toplam_butce:
                 continue
 
-            # Takım sınırı kontrolü
             t1, t2 = p1_dict["takim"], p2_dict["takim"]
             t_counts = dict(kalan_takim_sayilari)
             t_counts[t1] = t_counts.get(t1, 0) + 1
