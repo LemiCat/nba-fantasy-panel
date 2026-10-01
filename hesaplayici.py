@@ -37,6 +37,8 @@ def transferleri_hesapla(df, kadro_df, satilacak_isimler, kasa, suanki_kadro_isi
     gerekli_pozisyonlar = sorted(satilanlar_df["pozisyon"].tolist())
 
     havuz = df[(~df["isim"].isin(suanki_kadro_isimler)) & (df["durum"] != "Sakat") & (df["sakatlik"] != "u")].copy()
+    
+    # HIZ OPTİMİZASYONU: Gün kolonları döngü dışında tek seferde çekilir
     day_cols = get_day_cols(df, aktif_gw)
     gw_mac_col = f"gw{aktif_gw}_mac"
 
@@ -55,7 +57,7 @@ def transferleri_hesapla(df, kadro_df, satilacak_isimler, kasa, suanki_kadro_isi
             kalan_b = round(toplam_butce - p["fiyat"], 1)
 
             oneriler.append({
-                "baslik": f"{p['isim']} ({p['takim']} - {p['fiyat']}M) -> Toplam {p[gw_mac_col]} Mac (Sahada: {sahada_mac} Mac)",
+                "baslik": f"{p['isim']} ({p['takim']} - {p['fiyat']}M) ➔ Toplam {p[gw_mac_col]} Maç (Sahada: {sahada_mac} Maç)",
                 "kalan_butce": kalan_b,
                 "sahada_mac": sahada_mac,
                 "toplam_mac": p[gw_mac_col],
@@ -89,7 +91,7 @@ def transferleri_hesapla(df, kadro_df, satilacak_isimler, kasa, suanki_kadro_isi
             top_mac = p1[gw_mac_col] + p2[gw_mac_col]
 
             oneriler.append({
-                "baslik": f"{p1['isim']} ({p1['fiyat']}M) + {p2['isim']} ({p2['fiyat']}M) -> Toplam {top_mac} Mac (Sahada: {sahada_mac} Mac)",
+                "baslik": f"{p1['isim']} ({p1['fiyat']}M) + {p2['isim']} ({p2['fiyat']}M) ➔ Toplam {top_mac} Maç (Sahada: {sahada_mac} Maç)",
                 "kalan_butce": kalan_b,
                 "sahada_mac": sahada_mac,
                 "toplam_mac": top_mac,
