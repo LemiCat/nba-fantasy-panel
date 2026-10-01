@@ -1,10 +1,15 @@
 import itertools
 import pandas as pd
 
+DAY_COLS_GW1 = [f"d{i}" for i in range(1, 7)]
+DAY_COLS_GW2 = [f"gw2_d{i}" for i in range(1, 8)]
+
 def get_day_cols(df, gw=1):
     prefix = "d" if gw == 1 else "gw2_d"
     cols = [c for c in df.columns if c.startswith(prefix) and c[len(prefix):].isdigit()]
-    return sorted(cols, key=lambda x: int(x[len(prefix):]))
+    if cols:
+        return sorted(cols, key=lambda x: int(x[len(prefix):]))
+    return DAY_COLS_GW1 if gw == 1 else DAY_COLS_GW2
 
 def hesapla_efektif_mac(kadro_df, day_cols):
     toplam_sahada = 0
@@ -45,6 +50,14 @@ def hesapla_efektif_mac_hizli(kadro_records, day_cols):
 
     return toplam_sahada
 
+def oyuncu_satis_bedeli(alis_fiyati, guncel_fiyat):
+    """Resmi FPL / NBA Fantasy kuralı: Kârın %50'si eklenir, zararda ise güncel fiyat geçerlidir."""
+    if guncel_fiyat > alis_fiyati:
+        fark = guncel_fiyat - alis_fiyati
+        kar_payi = int(round(fark * 10)) // 2 / 10.0
+        return round(alis_fiyati + kar_payi, 1)
+    return round(guncel_fiyat, 1)
+
 def transferleri_hesapla(df, kadro_df, satilacak_isimler, kasa, suanki_kadro_isimler, aktif_gw=1):
     satilanlar_df = kadro_df[kadro_df["isim"].isin(satilacak_isimler)]
     kalan_kadro_df = kadro_df[~kadro_df["isim"].isin(satilacak_isimler)]
@@ -53,14 +66,19 @@ def transferleri_hesapla(df, kadro_df, satilacak_isimler, kasa, suanki_kadro_isi
     if k_sayisi not in [1, 2]:
         return []
 
-    gelen_butce = satilanlar_df["fiyat"].sum()
+    # Satış geliri: Her oyuncunun alış fiyatına göre %50 kâr payı hesabı
+    gelen_butce = 0.0
+    for _, row in satilanlar_df.iterrows():
+        alis_f = row.get("alis_fiyati", row["fiyat"])
+        gelen_butce += oyuncu_satis_bedeli(alis_f, row["fiyat"])
+    gelen_butce = round(gelen_butce, 1)
+
     toplam_butce = round(gelen_butce + kasa, 1)
     gerekli_pozisyonlar = sorted(satilanlar_df["pozisyon"].tolist())
 
     day_cols = get_day_cols(df, aktif_gw)
     gw_mac_col = f"gw{aktif_gw}_mac"
 
-    # Sakat veya listeden çıkarılmış olmayan tüm oyuncular
     havuz = df[
         (~df["isim"].isin(suanki_kadro_isimler)) & 
         (df["durum"] != "Sakat") & 
@@ -99,17 +117,13 @@ def transferleri_hesapla(df, kadro_df, satilacak_isimler, kasa, suanki_kadro_isi
 
     elif k_sayisi == 2:
         pos1, pos2 = gerekli_pozisyonlar[0], gerekli_pozisyonlar[1]
-
-        # En ucuz oyuncu en az 4.5M olabileceği için tavan fiyat
         max_tekil_fiyat = toplam_butce - 4.5
 
         if pos1 == pos2:
-            # Aynı mevkiden iki oyuncu satılıyorsa
             adaylar = havuz[(havuz["pozisyon"] == pos1) & (havuz["fiyat"] <= max_tekil_fiyat)]
             aday_records = adaylar.to_dict("records")
             kombinasyonlar = list(itertools.combinations(aday_records, 2))
         else:
-            # Farklı mevkilerden iki oyuncu satılıyorsa
             adaylar1 = havuz[(havuz["pozisyon"] == pos1) & (havuz["fiyat"] <= max_tekil_fiyat)].to_dict("records")
             adaylar2 = havuz[(havuz["pozisyon"] == pos2) & (havuz["fiyat"] <= max_tekil_fiyat)].to_dict("records")
             kombinasyonlar = list(itertools.product(adaylar1, adaylar2))
@@ -119,10 +133,7 @@ def transferleri_hesapla(df, kadro_df, satilacak_isimler, kasa, suanki_kadro_isi
             if maliyet > toplam_butce:
                 continue
 
-            # Takım sınırları kontrolü
             t1, t2 = p1_dict["takim"], p2_dict["takim"]
-            
-            # Eğer iki transfer aynı takımdansa ve kadroda zaten o takımdan varsa geç
             if t1 == t2 and kalan_takim_sayilari.get(t1, 0) >= 1:
                 continue
             if kalan_takim_sayilari.get(t1, 0) >= 2 or kalan_takim_sayilari.get(t2, 0) >= 2:
@@ -146,7 +157,6 @@ def transferleri_hesapla(df, kadro_df, satilacak_isimler, kasa, suanki_kadro_isi
     if not oneriler:
         return []
 
-    # En yüksek sahada maç ve en verimli bütçe sıralaması
     oneriler = sorted(oneriler, key=lambda x: (x["sahada_mac"], x["toplam_mac"], x["toplam_fiyat"]), reverse=True)
 
     filtrelenmis_oneriler = []

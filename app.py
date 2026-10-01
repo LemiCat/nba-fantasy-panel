@@ -203,6 +203,29 @@ st.markdown("""
     .btn-guncelle > button:hover {
         background-color: #1e40af !important;
     }
+    .btn-kaydet > button {
+        background-color: #16a34a !important;
+        color: #ffffff !important;
+        border: none !important;
+        font-weight: 800 !important;
+        font-size: 0.82rem !important;
+        border-radius: 6px !important;
+        letter-spacing: 0.5px !important;
+    }
+    .btn-kaydet > button:hover {
+        background-color: #15803d !important;
+    }
+    .btn-sifirla > button {
+        background-color: #334155 !important;
+        color: #cbd5e1 !important;
+        border: 1px solid #475569 !important;
+        font-weight: 700 !important;
+        font-size: 0.82rem !important;
+        border-radius: 6px !important;
+    }
+    .btn-sifirla > button:hover {
+        background-color: #475569 !important;
+    }
     .btn-sil > button {
         background-color: #374151 !important;
         color: #f87171 !important;
@@ -364,23 +387,58 @@ with c_sync:
 aktif_menajer = profiller[0] if secilen_profil == "+ Yeni Menajer Ekle..." else secilen_profil
 KADRO_DOSYASI = f"kadro_{aktif_menajer.lower()}.json"
 
-if f"kadro_{aktif_menajer}" not in st.session_state:
+# --- RESMİ KADRO VE ALIŞ MALİYETLERİ SİSTEMİ ---
+def resmi_kadroyu_oku():
     if os.path.exists(KADRO_DOSYASI):
         try:
             with open(KADRO_DOSYASI, "r", encoding="utf-8") as f:
-                kayitli = json.load(f)
-                valid = [n for n in kayitli if n in all_names]
-                st.session_state[f"kadro_{aktif_menajer}"] = valid if len(valid) == 10 else default_names
+                data = json.load(f)
+                # Eski format (sadece liste) ile uyumluluk
+                if isinstance(data, list):
+                    resmi = {}
+                    for n in data:
+                        p_row = df[df["isim"] == n]
+                        alis = float(p_row["fiyat"].iloc[0]) if not p_row.empty else 10.0
+                        resmi[n] = alis
+                    return resmi
+                elif isinstance(data, dict):
+                    return data
         except Exception:
-            st.session_state[f"kadro_{aktif_menajer}"] = default_names
-    else:
-        st.session_state[f"kadro_{aktif_menajer}"] = default_names
+            pass
+    # Varsayılan resmi kadro
+    resmi = {}
+    for n in default_names:
+        p_row = df[df["isim"] == n]
+        alis = float(p_row["fiyat"].iloc[0]) if not p_row.empty else 10.0
+        resmi[n] = alis
+    return resmi
 
-suanki_kadro_isimler = st.session_state[f"kadro_{aktif_menajer}"]
+# Session State'e resmi kadroyu ve çalışma (taslak) kadrosunu al
+if f"resmi_kadro_{aktif_menajer}" not in st.session_state:
+    st.session_state[f"resmi_kadro_{aktif_menajer}"] = resmi_kadroyu_oku()
 
-def kadroyu_kaydet():
+if f"taslak_kadro_{aktif_menajer}" not in st.session_state:
+    st.session_state[f"taslak_kadro_{aktif_menajer}"] = dict(st.session_state[f"resmi_kadro_{aktif_menajer}"])
+
+taslak_kadro = st.session_state[f"taslak_kadro_{aktif_menajer}"]
+resmi_kadro = st.session_state[f"resmi_kadro_{aktif_menajer}"]
+suanki_kadro_isimler = list(taslak_kadro.keys())
+
+def resmi_kadroya_kilitle():
+    # Güncel taslaktaki oyuncuların alış fiyatlarını sabitleyip dosyaya yaz
+    yeni_resmi = {}
+    for isim in taslak_kadro:
+        # Eğer zaten resmi kadroda varsa eski alış fiyatı korunur, yeni eklendiyse güncel piyasa fiyatı alış fiyatı olur
+        if isim in resmi_kadro:
+            yeni_resmi[isim] = resmi_kadro[isim]
+        else:
+            p_row = df[df["isim"] == n]
+            yeni_resmi[isim] = float(p_row["fiyat"].iloc[0]) if not p_row.empty else 10.0
+
+    st.session_state[f"resmi_kadro_{aktif_menajer}"] = yeni_resmi
+    st.session_state[f"taslak_kadro_{aktif_menajer}"] = dict(yeni_resmi)
     with open(KADRO_DOSYASI, "w", encoding="utf-8") as f:
-        json.dump(suanki_kadro_isimler, f, ensure_ascii=False, indent=2)
+        json.dump(yeni_resmi, f, ensure_ascii=False, indent=2)
 
 GW_NOW = 1
 GW_NEXT = 2
@@ -388,7 +446,7 @@ GW_NEXT = 2
 kadro_df_gecici = df[df["isim"].isin(suanki_kadro_isimler)]
 takim_sayilari = kadro_df_gecici["takim"].value_counts().to_dict()
 
-# --- OYUNCU DETAY POP-UP MODAL (F/P & FİYAT DEĞİŞİM ROZETLİ) ---
+# --- OYUNCU DETAY POP-UP MODAL ---
 @st.dialog("Oyuncu Profili", width="large")
 def oyuncu_popup(isim):
     p = df[df["isim"] == isim].iloc[0]
@@ -419,7 +477,6 @@ def oyuncu_popup(isim):
         st.markdown(f"<h2 style='margin:0 0 6px 0;'>{p['isim']}</h2>", unsafe_allow_html=True)
         pos_badge = f"<span class='badge-bc'>BC</span>" if pos == "BC" else f"<span class='badge-fc'>FC</span>"
         
-        # Fiyat Değişim Rozeti
         if fiyat_degisim > 0:
             price_badge = f"<span class='badge-price-up'>+{fiyat_degisim:.1f}M ↗</span>"
         elif fiyat_degisim < 0:
@@ -428,6 +485,12 @@ def oyuncu_popup(isim):
             price_badge = "<span class='badge-price-neutral'>0.0M —</span>"
 
         st.markdown(f"{pos_badge} <strong style='font-size:1.15rem; margin-left:8px; margin-right:6px;'>{fiyat:.1f}M</strong> {price_badge}", unsafe_allow_html=True)
+        
+        # Alış Fiyatı ve Satış Değeri Bilgisi
+        if isim in taslak_kadro:
+            alis_f = taslak_kadro[isim]
+            sat_f = hesaplayici.oyuncu_satis_bedeli(alis_f, fiyat)
+            st.caption(f"Alış: {alis_f:.1f}M | Çıkarıldığında Gelecek Bütçe: **{sat_f:.1f}M**")
         st.write("")
         if logo_url:
             st.image(logo_url, width=65)
@@ -451,28 +514,25 @@ def oyuncu_popup(isim):
     
     btn_c1, _ = st.columns([2.5, 2])
     with btn_c1:
-        if isim in suanki_kadro_isimler:
+        if isim in taslak_kadro:
             if st.button("Bu Oyuncuyu Kadrodan Çıkar", use_container_width=True):
-                suanki_kadro_isimler.remove(isim)
-                kadroyu_kaydet()
+                taslak_kadro.pop(isim, None)
                 st.rerun()
         else:
             oyuncunun_takimi = p["takim"]
             takimdaki_mevcut_sayi = takim_sayilari.get(oyuncunun_takimi, 0)
             
-            if len(suanki_kadro_isimler) >= 10:
+            if len(taslak_kadro) >= 10:
                 st.caption("Kadro dolu (10/10). Eklemek için birini çıkarmalısınız.")
             elif takimdaki_mevcut_sayi >= 2:
                 st.error(f"Takım Kotası Dolu: Zaten 2 {oyuncunun_takimi} oyuncusu var.")
             else:
                 if st.button("Bu Oyuncuyu Kadroya Ekle", use_container_width=True):
-                    suanki_kadro_isimler.append(isim)
-                    kadroyu_kaydet()
+                    # Havuzdan eklenen oyuncunun alış maliyeti güncel piyasa fiyatı olur
+                    taslak_kadro[isim] = fiyat
                     st.rerun()
 
     st.markdown("---")
-    
-    # F/P Değerleri Göstergesi
     st.markdown("##### ⚡ FİYAT / PERFORMANS (F/P VERİMLİLİĞİ)")
     fp_c1, fp_c2 = st.columns(2)
     with fp_c1:
@@ -539,11 +599,14 @@ if st.session_state.get("gosterilecek_oyuncu"):
 st.write("")
 
 kadro_df = df[df["isim"].isin(suanki_kadro_isimler)].copy()
+# Her oyuncuya özel alış fiyatını ve satış değerini ata
+kadro_df["alis_fiyati"] = kadro_df["isim"].map(taslak_kadro).fillna(kadro_df["fiyat"])
+kadro_df["satis_fiyati"] = kadro_df.apply(lambda r: hesaplayici.oyuncu_satis_bedeli(r["alis_fiyati"], r["fiyat"]), axis=1)
+
 bc_toplam = len(kadro_df[kadro_df["pozisyon"] == "BC"])
 fc_toplam = len(kadro_df[kadro_df["pozisyon"] == "FC"])
 fazla_takimlar = [t for t, c in kadro_df["takim"].value_counts().items() if c > 2]
 
-# F/P Değerini Tabloya Ekle
 kadro_df["fp_skor"] = (kadro_df["ort_puan"] / kadro_df["fiyat"]).round(2)
 
 day_cols_gw1 = hesaplayici.get_day_cols(df, 1)
@@ -572,7 +635,8 @@ if len(kadro_df) == 10:
 kadro_df["gw2_israf"] = kadro_df["isim"].map(oyuncu_israf).fillna(0).astype(int)
 
 # --- 3. SCOREBOARD METRİK ŞERİDİ ---
-harcanan = round(kadro_df["fiyat"].sum(), 1)
+# Kadro maliyeti oyuncuların alış maliyeti üzerinden hesaplanır
+harcanan = round(kadro_df["alis_fiyati"].sum(), 1)
 kasa = round(100.0 - harcanan, 1)
 efektif_gw1 = hesaplayici.hesapla_efektif_mac(kadro_df, day_cols_gw1) if len(kadro_df) == 10 else 0
 efektif_gw2 = hesaplayici.hesapla_efektif_mac(kadro_df, day_cols_gw2) if len(kadro_df) == 10 else 0
@@ -629,8 +693,32 @@ with m5:
 
 st.write("")
 
-# --- 4. KADRO YÖNETİMİ VE TABLO ---
-st.markdown(f"#### {aktif_menajer.upper()} KADROSU")
+# --- 4. KADRO YÖNETİMİ VE ONAY BUTONLARI ---
+k_baslik_col, k_btn_col1, k_btn_col2 = st.columns([2.6, 1.4, 1.0])
+with k_baslik_col:
+    st.markdown(f"#### {aktif_menajer.upper()} KADROSU")
+
+# Değişiklik Kontrolü
+degisiklik_var = (set(taslak_kadro.keys()) != set(resmi_kadro.keys()))
+
+with k_btn_col1:
+    st.markdown('<div class="btn-kaydet">', unsafe_allow_html=True)
+    if st.button("KADROYU ONAYLA VE KAYDET", help="Yapılan transferleri onaylar ve bütçeyi kilitler", use_container_width=True):
+        resmi_kadroya_kilitle()
+        st.success("Kadro onaylandı ve kaydedildi!")
+        st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+
+with k_btn_col2:
+    if degisiklik_var:
+        st.markdown('<div class="btn-sifirla">', unsafe_allow_html=True)
+        if st.button("Değişiklikleri Sıfırla", help="Kaydedilmemiş taslak değişiklikleri geri alır", use_container_width=True):
+            st.session_state[f"taslak_kadro_{aktif_menajer}"] = dict(resmi_kadro)
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
+if degisiklik_var:
+    st.caption("⚠️ Kadronuzda henüz onaylanmamış taslak değişiklikler var. Bütçe ve kadronun kilitlenmesi için yukarıdan onaylayın.")
 
 if len(kadro_df) < 10:
     st.warning(f"Kadronuzda {10 - len(kadro_df)} oyuncu eksik.")
@@ -679,19 +767,19 @@ elif sirala_kriter == f"GW{GW_NEXT} Maç Sayısı (Çoktan Aza)":
 st.markdown("""
 <div class="desktop-table-header">
     <div style="display:flex; justify-content:space-between; color:#64748b; font-size:0.75rem; font-weight:700; padding:4px 0 8px 0; border-bottom:1px solid #1e293b;">
-        <span style="flex:2.5;">OYUNCU</span>
-        <span style="flex:0.8;">MEVKİ</span>
-        <span style="flex:1.0;">FİYAT</span>
-        <span style="flex:1.1;">GW1</span>
-        <span style="flex:1.1;">GW2</span>
+        <span style="flex:2.3;">OYUNCU</span>
+        <span style="flex:0.7;">MEVKİ</span>
+        <span style="flex:1.2;">FİYAT (ALIŞ / SATIŞ)</span>
+        <span style="flex:0.9;">GW1</span>
+        <span style="flex:0.9;">GW2</span>
         <span style="flex:2.4;">DURUM / İSRAF</span>
-        <span style="flex:1.1; text-align:right;">İŞLEM</span>
+        <span style="flex:1.2; text-align:right;">İŞLEM</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
 for idx, p in kadro_df.iterrows():
-    c1, c2, c3, c4, c5, c6, c7 = st.columns([2.5, 0.8, 1.0, 1.1, 1.1, 2.4, 1.1])
+    c1, c2, c3, c4, c5, c6, c7 = st.columns([2.3, 0.7, 1.2, 0.9, 0.9, 2.4, 1.2])
     
     with c1:
         t_logo = TEAM_LOGOS.get(p['takim'], "")
@@ -705,7 +793,9 @@ for idx, p in kadro_df.iterrows():
         pos_badge = f"<span class='badge-bc'>BC</span>" if p['pozisyon'] == "BC" else f"<span class='badge-fc'>FC</span>"
         st.markdown(pos_badge, unsafe_allow_html=True)
     with c3:
-        st.markdown(f"**{p['fiyat']}M**")
+        alis_f = p["alis_fiyati"]
+        sat_f = p["satis_fiyati"]
+        st.markdown(f"**{sat_f:.1f}M** <span style='font-size:0.75rem; color:#64748b;'>({alis_f:.1f}M)</span>", unsafe_allow_html=True)
     with c4:
         b2b1_badge = f"<span class='badge-b2b'>B2B</span>" if p[f"gw{GW_NOW}_b2b"] == "Var" else ""
         st.markdown(f"**{p[f'gw{GW_NOW}_mac']}** {b2b1_badge}", unsafe_allow_html=True)
@@ -737,8 +827,7 @@ for idx, p in kadro_df.iterrows():
         with b_col2:
             st.markdown('<div class="btn-cikar">', unsafe_allow_html=True)
             if st.button("Çıkar", key=f"k_del_{idx}", help="Kadrodan Çıkar", use_container_width=True):
-                suanki_kadro_isimler.remove(p["isim"])
-                kadroyu_kaydet()
+                taslak_kadro.pop(p["isim"], None)
                 st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
             
@@ -828,9 +917,11 @@ else:
 
     if "son_oneriler" in st.session_state:
         aktif_satilan_df = kadro_df[kadro_df["isim"].isin(st.session_state["aktif_satilanlar"])]
-        satilan_gelir_toplam = aktif_satilan_df["fiyat"].sum()
+        
+        # Satış Geliri: Gerçek satış bedeli üzerinden
+        satilan_gelir_toplam = aktif_satilan_df["satis_fiyati"].sum()
         kullanilabilir_toplam = round(satilan_gelir_toplam + kasa, 1)
-        satilan_isimler_str = " + ".join([f"{row['isim']} ({row['fiyat']}M)" for _, row in aktif_satilan_df.iterrows()])
+        satilan_isimler_str = " + ".join([f"{row['isim']} (Satış: {row['satis_fiyati']:.1f}M)" for _, row in aktif_satilan_df.iterrows()])
 
         st.markdown(f"""
         <div class="budget-info-box">
@@ -857,12 +948,16 @@ else:
                 
                 with btn_cols[-1]:
                     st.markdown('<div class="btn-uygula">', unsafe_allow_html=True)
-                    if st.button("Uygula", key=f"apply_{idx}", help="Transferi doğrudan kadroya uygula", use_container_width=True):
+                    if st.button("Uygula", key=f"apply_{idx}", help="Transferi doğrudan taslak kadroya uygula", use_container_width=True):
                         satilan_liste = st.session_state.get("aktif_satilanlar", satilacaklar)
-                        yeni_liste = [n for n in suanki_kadro_isimler if n not in satilan_liste]
-                        yeni_liste.extend(o["isimler"])
-                        st.session_state[f"kadro_{aktif_menajer}"] = yeni_liste
-                        kadroyu_kaydet()
+                        # Satılanları çıkar
+                        for s_isim in satilan_liste:
+                            taslak_kadro.pop(s_isim, None)
+                        # Yeni gelenleri güncel piyasa fiyatından ekle
+                        for y_isim in o["isimler"]:
+                            p_row = df[df["isim"] == y_isim]
+                            taslak_kadro[y_isim] = float(p_row["fiyat"].iloc[0]) if not p_row.empty else 10.0
+                        
                         st.session_state.pop("son_oneriler", None)
                         st.rerun()
                     st.markdown('</div>', unsafe_allow_html=True)
