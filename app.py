@@ -40,6 +40,20 @@ st.markdown("""
         letter-spacing: 1px;
     }
 
+    /* ARAMA ÇUBUĞU: Sağdaki açılır oku gizle, tam bir Search Bar yap */
+    div[data-testid="stSelectbox"] svg {
+        display: none !important;
+    }
+    div[data-testid="stSelectbox"] > div > div {
+        background-color: #111827 !important;
+        border: 1px solid #1f2937 !important;
+        border-radius: 8px !important;
+        color: #f8fafc !important;
+    }
+    div[data-testid="stSelectbox"] > div > div:hover {
+        border-color: #38bdf8 !important;
+    }
+
     /* Scoreboard Metrik Kartları */
     .metric-card {
         background: #111827;
@@ -420,26 +434,19 @@ def oyuncu_popup(isim):
     c6.metric("Top Çalma", f"{p.get('f_top_calma', 0.0):.1f}", delta=format_delta(p.get("top_calma", 0.0), p.get("f_top_calma", 0.0)))
     c7.metric("Blok", f"{p.get('f_blok', 0.0):.1f}", delta=format_delta(p.get("blok", 0.0), p.get("f_blok", 0.0)))
 
-# --- GERÇEK YAZILABİLİR ARAMA ÇUBUĞU (KİLİTLENMEYEN VE TEKRAR AÇILMAYAN) ---
-arama_metni = st.text_input(
+# --- SPOTLIGHT ARAMA ÇUBUĞU (OKSUZ, YAZILDIĞINDA ANINDA ÇIKAN VE ASLA KİLİTLENMEYEN) ---
+secilen_oyuncu = st.selectbox(
     "Oyuncu Ara:",
-    placeholder="Oyuncu adı yazın (Örn: Luka, Giannis, Tyrese...)",
-    label_visibility="collapsed"
+    options=all_names,
+    index=None,
+    placeholder="Oyuncu ara veya seçin (Örn: Luka, Giannis, Alperen...)",
+    label_visibility="collapsed",
+    key="spotlight_search"
 )
 
-if arama_metni.strip():
-    eslesenler = [n for n in all_names if arama_metni.lower() in n.lower()][:8]
-    if eslesenler:
-        st.caption("Bulunan Oyuncular (Profili açmak için tıklayın):")
-        cols_arama = st.columns(len(eslesenler))
-        for idx_a, p_ad in enumerate(eslesenler):
-            with cols_arama[idx_a]:
-                st.markdown('<div class="btn-detay">', unsafe_allow_html=True)
-                if st.button(p_ad, key=f"search_btn_{idx_a}", use_container_width=True):
-                    oyuncu_popup(p_ad)
-                st.markdown('</div>', unsafe_allow_html=True)
-    else:
-        st.caption("Eşleşen oyuncu bulunamadı.")
+if secilen_oyuncu:
+    # Pop-up'ı aç ve açtıktan sonra bir daha takılı kalmaması için seçimi sıfırla
+    oyuncu_popup(secilen_oyuncu)
 
 st.write("")
 
