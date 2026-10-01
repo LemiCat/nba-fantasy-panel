@@ -434,19 +434,33 @@ def oyuncu_popup(isim):
     c6.metric("Top Çalma", f"{p.get('f_top_calma', 0.0):.1f}", delta=format_delta(p.get("top_calma", 0.0), p.get("f_top_calma", 0.0)))
     c7.metric("Blok", f"{p.get('f_blok', 0.0):.1f}", delta=format_delta(p.get("blok", 0.0), p.get("f_blok", 0.0)))
 
-# --- SPOTLIGHT ARAMA ÇUBUĞU (OKSUZ, YAZILDIĞINDA ANINDA ÇIKAN VE ASLA KİLİTLENMEYEN) ---
-secilen_oyuncu = st.selectbox(
+# --- SPOTLIGHT ARAMA ÇUBUĞU (KESİN ÇÖZÜM: DİNAMİK KEY İLE OTOMATİK SIFIRLAMA) ---
+if "search_key_counter" not in st.session_state:
+    st.session_state["search_key_counter"] = 0
+if "gosterilecek_oyuncu" not in st.session_state:
+    st.session_state["gosterilecek_oyuncu"] = None
+
+def on_oyuncu_secildi():
+    secim = st.session_state.get(f"spotlight_search_{st.session_state['search_key_counter']}")
+    if secim:
+        st.session_state["gosterilecek_oyuncu"] = secim
+        # Widget'ı tamamen yok edip boş olarak baştan oluşturmak için sayacı artırıyoruz:
+        st.session_state["search_key_counter"] += 1
+
+st.selectbox(
     "Oyuncu Ara:",
     options=all_names,
     index=None,
     placeholder="Oyuncu ara veya seçin (Örn: Luka, Giannis, Alperen...)",
     label_visibility="collapsed",
-    key="spotlight_search"
+    key=f"spotlight_search_{st.session_state['search_key_counter']}",
+    on_change=on_oyuncu_secildi
 )
 
-if secilen_oyuncu:
-    # Pop-up'ı aç ve açtıktan sonra bir daha takılı kalmaması için seçimi sıfırla
-    oyuncu_popup(secilen_oyuncu)
+if st.session_state.get("gosterilecek_oyuncu"):
+    hedef_oyuncu = st.session_state["gosterilecek_oyuncu"]
+    st.session_state["gosterilecek_oyuncu"] = None
+    oyuncu_popup(hedef_oyuncu)
 
 st.write("")
 
