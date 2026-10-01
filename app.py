@@ -11,6 +11,16 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# --- SATIŞ BEDELİ HESAPLAYICI (RESMİ %50 KÂR KURALI) ---
+def oyuncu_satis_bedeli(alis_fiyati, guncel_fiyat):
+    alis_fiyati = float(alis_fiyati)
+    guncel_fiyat = float(guncel_fiyat)
+    if guncel_fiyat > alis_fiyati:
+        fark = guncel_fiyat - alis_fiyati
+        kar_payi = (int(round(fark * 10)) // 2) / 10.0
+        return round(alis_fiyati + kar_payi, 1)
+    return round(guncel_fiyat, 1)
+
 # --- RESPONSIVE & MOBILE-FIRST NBA DARK THEME CSS ---
 st.markdown("""
 <style>
@@ -393,7 +403,6 @@ def resmi_kadroyu_oku():
         try:
             with open(KADRO_DOSYASI, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                # Eski format (sadece liste) ile uyumluluk
                 if isinstance(data, list):
                     resmi = {}
                     for n in data:
@@ -405,7 +414,6 @@ def resmi_kadroyu_oku():
                     return data
         except Exception:
             pass
-    # Varsayılan resmi kadro
     resmi = {}
     for n in default_names:
         p_row = df[df["isim"] == n]
@@ -413,7 +421,6 @@ def resmi_kadroyu_oku():
         resmi[n] = alis
     return resmi
 
-# Session State'e resmi kadroyu ve çalışma (taslak) kadrosunu al
 if f"resmi_kadro_{aktif_menajer}" not in st.session_state:
     st.session_state[f"resmi_kadro_{aktif_menajer}"] = resmi_kadroyu_oku()
 
@@ -425,14 +432,12 @@ resmi_kadro = st.session_state[f"resmi_kadro_{aktif_menajer}"]
 suanki_kadro_isimler = list(taslak_kadro.keys())
 
 def resmi_kadroya_kilitle():
-    # Güncel taslaktaki oyuncuların alış fiyatlarını sabitleyip dosyaya yaz
     yeni_resmi = {}
     for isim in taslak_kadro:
-        # Eğer zaten resmi kadroda varsa eski alış fiyatı korunur, yeni eklendiyse güncel piyasa fiyatı alış fiyatı olur
         if isim in resmi_kadro:
             yeni_resmi[isim] = resmi_kadro[isim]
         else:
-            p_row = df[df["isim"] == n]
+            p_row = df[df["isim"] == isim]
             yeni_resmi[isim] = float(p_row["fiyat"].iloc[0]) if not p_row.empty else 10.0
 
     st.session_state[f"resmi_kadro_{aktif_menajer}"] = yeni_resmi
@@ -456,7 +461,6 @@ def oyuncu_popup(isim):
     fiyat = float(p.get("fiyat", 1.0))
     fiyat_degisim = float(p.get("fiyat_degisim", 0.0))
     
-    # F/P Değerleri
     ort_p = float(p.get("ort_puan", 0.0))
     form_p = float(p.get("f_ort_puan", 0.0))
     fp_sezon = round(ort_p / fiyat, 2) if fiyat > 0 else 0.0
@@ -486,10 +490,9 @@ def oyuncu_popup(isim):
 
         st.markdown(f"{pos_badge} <strong style='font-size:1.15rem; margin-left:8px; margin-right:6px;'>{fiyat:.1f}M</strong> {price_badge}", unsafe_allow_html=True)
         
-        # Alış Fiyatı ve Satış Değeri Bilgisi
         if isim in taslak_kadro:
             alis_f = taslak_kadro[isim]
-            sat_f = hesaplayici.oyuncu_satis_bedeli(alis_f, fiyat)
+            sat_f = oyuncu_satis_bedeli(alis_f, fiyat)
             st.caption(f"Alış: {alis_f:.1f}M | Çıkarıldığında Gelecek Bütçe: **{sat_f:.1f}M**")
         st.write("")
         if logo_url:
@@ -528,7 +531,6 @@ def oyuncu_popup(isim):
                 st.error(f"Takım Kotası Dolu: Zaten 2 {oyuncunun_takimi} oyuncusu var.")
             else:
                 if st.button("Bu Oyuncuyu Kadroya Ekle", use_container_width=True):
-                    # Havuzdan eklenen oyuncunun alış maliyeti güncel piyasa fiyatı olur
                     taslak_kadro[isim] = fiyat
                     st.rerun()
 
@@ -599,9 +601,8 @@ if st.session_state.get("gosterilecek_oyuncu"):
 st.write("")
 
 kadro_df = df[df["isim"].isin(suanki_kadro_isimler)].copy()
-# Her oyuncuya özel alış fiyatını ve satış değerini ata
 kadro_df["alis_fiyati"] = kadro_df["isim"].map(taslak_kadro).fillna(kadro_df["fiyat"])
-kadro_df["satis_fiyati"] = kadro_df.apply(lambda r: hesaplayici.oyuncu_satis_bedeli(r["alis_fiyati"], r["fiyat"]), axis=1)
+kadro_df["satis_fiyati"] = kadro_df.apply(lambda r: oyuncu_satis_bedeli(r["alis_fiyati"], r["fiyat"]), axis=1)
 
 bc_toplam = len(kadro_df[kadro_df["pozisyon"] == "BC"])
 fc_toplam = len(kadro_df[kadro_df["pozisyon"] == "FC"])
@@ -635,7 +636,6 @@ if len(kadro_df) == 10:
 kadro_df["gw2_israf"] = kadro_df["isim"].map(oyuncu_israf).fillna(0).astype(int)
 
 # --- 3. SCOREBOARD METRİK ŞERİDİ ---
-# Kadro maliyeti oyuncuların alış maliyeti üzerinden hesaplanır
 harcanan = round(kadro_df["alis_fiyati"].sum(), 1)
 kasa = round(100.0 - harcanan, 1)
 efektif_gw1 = hesaplayici.hesapla_efektif_mac(kadro_df, day_cols_gw1) if len(kadro_df) == 10 else 0
@@ -698,7 +698,6 @@ k_baslik_col, k_btn_col1, k_btn_col2 = st.columns([2.6, 1.4, 1.0])
 with k_baslik_col:
     st.markdown(f"#### {aktif_menajer.upper()} KADROSU")
 
-# Değişiklik Kontrolü
 degisiklik_var = (set(taslak_kadro.keys()) != set(resmi_kadro.keys()))
 
 with k_btn_col1:
@@ -918,7 +917,6 @@ else:
     if "son_oneriler" in st.session_state:
         aktif_satilan_df = kadro_df[kadro_df["isim"].isin(st.session_state["aktif_satilanlar"])]
         
-        # Satış Geliri: Gerçek satış bedeli üzerinden
         satilan_gelir_toplam = aktif_satilan_df["satis_fiyati"].sum()
         kullanilabilir_toplam = round(satilan_gelir_toplam + kasa, 1)
         satilan_isimler_str = " + ".join([f"{row['isim']} (Satış: {row['satis_fiyati']:.1f}M)" for _, row in aktif_satilan_df.iterrows()])
@@ -950,10 +948,8 @@ else:
                     st.markdown('<div class="btn-uygula">', unsafe_allow_html=True)
                     if st.button("Uygula", key=f"apply_{idx}", help="Transferi doğrudan taslak kadroya uygula", use_container_width=True):
                         satilan_liste = st.session_state.get("aktif_satilanlar", satilacaklar)
-                        # Satılanları çıkar
                         for s_isim in satilan_liste:
                             taslak_kadro.pop(s_isim, None)
-                        # Yeni gelenleri güncel piyasa fiyatından ekle
                         for y_isim in o["isimler"]:
                             p_row = df[df["isim"] == y_isim]
                             taslak_kadro[y_isim] = float(p_row["fiyat"].iloc[0]) if not p_row.empty else 10.0
