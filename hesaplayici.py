@@ -6,17 +6,20 @@ def get_day_cols(df, gw=1):
     cols = [c for c in df.columns if c.startswith(prefix) and c[len(prefix):].isdigit()]
     return sorted(cols, key=lambda x: int(x[len(prefix):]))
 
-def hesapla_efektif_mac(kadro_df, day_cols):
+def hesapla_efektif_mac_hizli(kadro_records, day_cols):
     toplam_sahada = 0
     for day_col in day_cols:
-        if day_col not in kadro_df.columns:
+        bc_count = 0
+        fc_count = 0
+        for p in kadro_records:
+            if p.get(day_col, 0) > 0:
+                if p["pozisyon"] == "BC":
+                    bc_count += 1
+                else:
+                    fc_count += 1
+        
+        if bc_count == 0 and fc_count == 0:
             continue
-        maci_olanlar = kadro_df[kadro_df[day_col] > 0]
-        if maci_olanlar.empty:
-            continue
-
-        bc_count = len(maci_olanlar[maci_olanlar["pozisyon"] == "BC"])
-        fc_count = len(maci_olanlar[maci_olanlar["pozisyon"] == "FC"])
 
         opt1 = min(bc_count, 3) + min(fc_count, 2)
         opt2 = min(bc_count, 2) + min(fc_count, 3)
@@ -36,11 +39,21 @@ def transferleri_hesapla(df, kadro_df, satilacak_isimler, kasa, suanki_kadro_isi
     toplam_butce = round(gelen_butce + kasa, 1)
     gerekli_pozisyonlar = sorted(satilanlar_df["pozisyon"].tolist())
 
-    havuz = df[(~df["isim"].isin(suanki_kadro_isimler)) & (df["durum"] != "Sakat") & (df["sakatlik"] != "u")].copy()
-    
-    # HIZ OPTİMİZASYONU: Gün kolonları döngü dışında tek seferde çekilir
     day_cols = get_day_cols(df, aktif_gw)
     gw_mac_col = f"gw{aktif_gw}_mac"
+
+    # Ön Filtreleme: Sakat olmayan ve o hafta en az 1 maçı olan oyuncular (Hız için kritik)
+    havuz = df[
+        (~df["isim"].isin(suanki_kadro_isimler)) & 
+        (df["durum"] != "Sakat") & 
+        (df["sakatlik"] != "u") &
+        (df[gw_mac_col] > 0)
+    ].copy()
+
+    kalan_records = kalan_kadro_df.to_dict("records")
+    kalan_takim_sayilari = {}
+    for p in kalan_records:
+        kalan_takim_sayilari[p["takim"]] = kalan_takim_sayilari.get(p["takim"], 0) + 1
 
     oneriler = []
 
@@ -49,55 +62,62 @@ def transferleri_hesapla(df, kadro_df, satilacak_isimler, kasa, suanki_kadro_isi
         adaylar = havuz[(havuz["pozisyon"] == pos) & (havuz["fiyat"] <= toplam_butce)].copy()
 
         for _, p in adaylar.iterrows():
-            gecici_kadro = pd.concat([kalan_kadro_df, pd.DataFrame([p])])
-            if gecici_kadro["takim"].value_counts().max() > 2:
+            p_dict = p.to_dict()
+            if kalan_takim_sayilari.get(p_dict["takim"], 0) >= 2:
                 continue
 
-            sahada_mac = hesapla_efektif_mac(gecici_kadro, day_cols)
-            kalan_b = round(toplam_butce - p["fiyat"], 1)
+            gecici_kadro = kalan_records + [p_dict]
+            sahada_mac = hesapla_efektif_mac_hizli(gecici_kadro, day_cols)
+            kalan_b = round(toplam_butce - p_dict["fiyat"], 1)
 
             oneriler.append({
-                "baslik": f"{p['isim']} ({p['takim']} - {p['fiyat']}M) ➔ Toplam {p[gw_mac_col]} Maç (Sahada: {sahada_mac} Maç)",
+                "baslik": f"{p_dict['isim']} ({p_dict['takim']} - {p_dict['fiyat']}M) ➔ Toplam {p_dict[gw_mac_col]} Maç (Sahada: {sahada_mac} Maç)",
                 "kalan_butce": kalan_b,
                 "sahada_mac": sahada_mac,
-                "toplam_mac": p[gw_mac_col],
-                "toplam_fiyat": p["fiyat"],
-                "isimler": [p["isim"]],
-                "takimlar": [p["takim"]]
+                "toplam_mac": p_dict[gw_mac_col],
+                "toplam_fiyat": p_dict["fiyat"],
+                "isimler": [p_dict["isim"]],
+                "takimlar": [p_dict["takim"]]
             })
 
     elif k_sayisi == 2:
         pos1, pos2 = gerekli_pozisyonlar[0], gerekli_pozisyonlar[1]
 
+        # Sadece bütçeye yetebilecek en verimli ilk 40 adayı alarak kombinasyon patlamasını önle
         if pos1 == pos2:
-            adaylar = havuz[havuz["pozisyon"] == pos1]
-            kombinasyonlar = list(itertools.combinations(adaylar.iterrows(), 2))
+            adaylar = havuz[(havuz["pozisyon"] == pos1) & (havuz["fiyat"] <= (toplam_butce - 4.5))].sort_values(by=[gw_mac_col, "fiyat"], ascending=[False, False]).head(40)
+            kombinasyonlar = list(itertools.combinations(adaylar.to_dict("records"), 2))
         else:
-            adaylar1 = havuz[havuz["pozisyon"] == pos1]
-            adaylar2 = havuz[havuz["pozisyon"] == pos2]
-            kombinasyonlar = list(itertools.product(adaylar1.iterrows(), adaylar2.iterrows()))
+            adaylar1 = havuz[(havuz["pozisyon"] == pos1) & (havuz["fiyat"] <= (toplam_butce - 4.5))].sort_values(by=[gw_mac_col, "fiyat"], ascending=[False, False]).head(30).to_dict("records")
+            adaylar2 = havuz[(havuz["pozisyon"] == pos2) & (havuz["fiyat"] <= (toplam_butce - 4.5))].sort_values(by=[gw_mac_col, "fiyat"], ascending=[False, False]).head(30).to_dict("records")
+            kombinasyonlar = list(itertools.product(adaylar1, adaylar2))
 
-        for (_, p1), (_, p2) in kombinasyonlar:
-            maliyet = round(p1["fiyat"] + p2["fiyat"], 1)
+        for p1_dict, p2_dict in kombinasyonlar:
+            maliyet = round(p1_dict["fiyat"] + p2_dict["fiyat"], 1)
             if maliyet > toplam_butce:
                 continue
 
-            gecici_kadro = pd.concat([kalan_kadro_df, pd.DataFrame([p1, p2])])
-            if gecici_kadro["takim"].value_counts().max() > 2:
+            # Takım sınırı kontrolü
+            t1, t2 = p1_dict["takim"], p2_dict["takim"]
+            t_counts = dict(kalan_takim_sayilari)
+            t_counts[t1] = t_counts.get(t1, 0) + 1
+            t_counts[t2] = t_counts.get(t2, 0) + 1
+            if t_counts[t1] > 2 or t_counts[t2] > 2:
                 continue
 
-            sahada_mac = hesapla_efektif_mac(gecici_kadro, day_cols)
+            gecici_kadro = kalan_records + [p1_dict, p2_dict]
+            sahada_mac = hesapla_efektif_mac_hizli(gecici_kadro, day_cols)
             kalan_b = round(toplam_butce - maliyet, 1)
-            top_mac = p1[gw_mac_col] + p2[gw_mac_col]
+            top_mac = p1_dict[gw_mac_col] + p2_dict[gw_mac_col]
 
             oneriler.append({
-                "baslik": f"{p1['isim']} ({p1['fiyat']}M) + {p2['isim']} ({p2['fiyat']}M) ➔ Toplam {top_mac} Maç (Sahada: {sahada_mac} Maç)",
+                "baslik": f"{p1_dict['isim']} ({p1_dict['fiyat']}M) + {p2_dict['isim']} ({p2_dict['fiyat']}M) ➔ Toplam {top_mac} Maç (Sahada: {sahada_mac} Maç)",
                 "kalan_butce": kalan_b,
                 "sahada_mac": sahada_mac,
                 "toplam_mac": top_mac,
                 "toplam_fiyat": maliyet,
-                "isimler": [p1["isim"], p2["isim"]],
-                "takimlar": [p1["takim"], p2["takim"]]
+                "isimler": [p1_dict["isim"], p2_dict["isim"]],
+                "takimlar": [t1, t2]
             })
 
     if not oneriler:

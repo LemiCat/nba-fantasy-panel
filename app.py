@@ -91,7 +91,7 @@ st.markdown("""
         border-radius: 6px;
     }
 
-    /* B2B Ayrışan Mor Rozeti */
+    /* B2B Mor Rozeti */
     .badge-b2b {
         background: rgba(168, 85, 247, 0.18);
         color: #c084fc;
@@ -102,14 +102,14 @@ st.markdown("""
         border-radius: 6px;
     }
 
-    /* Diğer Durum Rozetleri */
+    /* Durum Rozetleri */
     .badge-out { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); font-weight:700; font-size:0.72rem; padding:3px 8px; border-radius:6px; }
     .badge-dtd { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); font-weight:700; font-size:0.72rem; padding:3px 8px; border-radius:6px; }
     .badge-active { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); font-weight:700; font-size:0.72rem; padding:3px 8px; border-radius:6px; }
     .badge-waste { background: rgba(239, 68, 68, 0.12); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.25); font-weight:700; font-size:0.72rem; padding:3px 8px; border-radius:6px; }
     .badge-clean { background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.25); font-weight:700; font-size:0.72rem; padding:3px 8px; border-radius:6px; }
 
-    /* Canlı Aksiyon Butonları */
+    /* Canlı Butonlar */
     .btn-detay > button {
         background-color: #0284c7 !important;
         color: #ffffff !important;
@@ -251,7 +251,7 @@ default_names = [
     "Joel Embiid", "Zion Williamson", "Walker Kessler", "Jusuf Nurkic", "Tolu Smith"
 ]
 
-# --- BAŞLIK VE MENAJER KONTROL HİZALAMASI ---
+# Header Bar
 c_head, c_mgr, c_del, c_sync = st.columns([2.5, 1.4, 0.45, 0.85])
 with c_head:
     st.markdown("""
@@ -420,16 +420,26 @@ def oyuncu_popup(isim):
     c6.metric("Top Çalma", f"{p.get('f_top_calma', 0.0):.1f}", delta=format_delta(p.get("top_calma", 0.0), p.get("f_top_calma", 0.0)))
     c7.metric("Blok", f"{p.get('f_blok', 0.0):.1f}", delta=format_delta(p.get("blok", 0.0), p.get("f_blok", 0.0)))
 
-# --- TEK TIKLA ARAMA & POP-UP ---
-secilen_oyuncu = st.selectbox(
+# --- GERÇEK YAZILABİLİR ARAMA ÇUBUĞU (KİLİTLENMEYEN VE TEKRAR AÇILMAYAN) ---
+arama_metni = st.text_input(
     "Oyuncu Ara:",
-    options=["--- Oyuncu Ara veya Seç ---"] + all_names,
-    index=0,
+    placeholder="Oyuncu adı yazın (Örn: Luka, Giannis, Tyrese...)",
     label_visibility="collapsed"
 )
 
-if secilen_oyuncu != "--- Oyuncu Ara veya Seç ---":
-    oyuncu_popup(secilen_oyuncu)
+if arama_metni.strip():
+    eslesenler = [n for n in all_names if arama_metni.lower() in n.lower()][:8]
+    if eslesenler:
+        st.caption("Bulunan Oyuncular (Profili açmak için tıklayın):")
+        cols_arama = st.columns(len(eslesenler))
+        for idx_a, p_ad in enumerate(eslesenler):
+            with cols_arama[idx_a]:
+                st.markdown('<div class="btn-detay">', unsafe_allow_html=True)
+                if st.button(p_ad, key=f"search_btn_{idx_a}", use_container_width=True):
+                    oyuncu_popup(p_ad)
+                st.markdown('</div>', unsafe_allow_html=True)
+    else:
+        st.caption("Eşleşen oyuncu bulunamadı.")
 
 st.write("")
 
@@ -438,7 +448,6 @@ bc_toplam = len(kadro_df[kadro_df["pozisyon"] == "BC"])
 fc_toplam = len(kadro_df[kadro_df["pozisyon"] == "FC"])
 fazla_takimlar = [t for t, c in kadro_df["takim"].value_counts().items() if c > 2]
 
-# Dinamik Gün Kolonları
 day_cols_gw1 = hesaplayici.get_day_cols(df, 1)
 day_cols_gw2 = hesaplayici.get_day_cols(df, 2)
 
@@ -633,7 +642,7 @@ for idx, p in kadro_df.iterrows():
 
 st.write("")
 
-# --- 5. GÜNLÜK MAÇ & SAHAYA ÇIKIŞ MATRİSİ (KUSURSUZ TEMİZ HTML) ---
+# --- 5. GÜNLÜK MAÇ & SAHAYA ÇIKIŞ MATRİSİ ---
 def renkli_doluluk_badge(sahaya_cikan):
     renk_map = {
         5: ("#059669", "#ecfdf5"),
