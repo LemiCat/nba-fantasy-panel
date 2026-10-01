@@ -1,260 +1,124 @@
+import itertools
 import pandas as pd
 
-DAY_COLS_GW1 = ["d1", "d2", "d3", "d4", "d5", "d6"]
-DAY_COLS_GW2 = ["gw2_d1", "gw2_d2", "gw2_d3", "gw2_d4", "gw2_d5", "gw2_d6"]
+def get_day_cols(df, gw=1):
+    prefix = "d" if gw == 1 else "gw2_d"
+    cols = [c for c in df.columns if c.startswith(prefix) and c[len(prefix):].isdigit()]
+    return sorted(cols, key=lambda x: int(x[len(prefix):]))
 
-
-def hesapla_efektif_mac(kadro_10_df, day_cols=DAY_COLS_GW1):
-  toplam = 0
-  for d in day_cols:
-    if d not in kadro_10_df.columns:
-      continue
-    maci_olanlar = kadro_10_df[kadro_10_df[d] > 0]
-    bc_count = len(maci_olanlar[maci_olanlar["pozisyon"] == "BC"])
-    fc_count = len(maci_olanlar[maci_olanlar["pozisyon"] == "FC"])
-    opt1 = min(bc_count, 3) + min(fc_count, 2)
-    opt2 = min(bc_count, 2) + min(fc_count, 3)
-    toplam += min(5, max(opt1, opt2))
-  return toplam
-
-
-# Hızlı simülasyon motoru (Saf Python - 0.1 saniye)
-def _hizli_efektif_hesapla(gunluk_bc_sayilari, gunluk_fc_sayilari):
-  toplam = 0
-  for bc, fc in zip(gunluk_bc_sayilari, gunluk_fc_sayilari):
-    opt1 = (bc if bc < 3 else 3) + (fc if fc < 2 else 2)
-    opt2 = (bc if bc < 2 else 2) + (fc if fc < 3 else 3)
-    cikan = opt1 if opt1 > opt2 else opt2
-    toplam += cikan if cikan < 5 else 5
-  return toplam
-
-
-def transferleri_hesapla(
-    df, kadro_df, satilacaklar, kalan_kasa, secilen_kadro_isimler, aktif_gw=1
-):
-  if not satilacaklar:
-    return []
-
-  df = df.copy()
-  df["fiyat"] = pd.to_numeric(df["fiyat"], errors="coerce").fillna(4.5)
-
-  satilan_df = kadro_df[kadro_df["isim"].isin(satilacaklar)].copy()
-  kalacak_df = kadro_df[~kadro_df["isim"].isin(satilacaklar)].copy()
-
-  satis_geliri = float(satilan_df["fiyat"].sum())
-  toplam_butce = round(float(kalan_kasa) + satis_geliri, 2)
-
-  gerekli_pozisyonlar = satilan_df["pozisyon"].tolist()
-  mevcut_takim_sayilari = kalacak_df["takim"].value_counts().to_dict()
-  haric_isimler = set(secilen_kadro_isimler)
-
-  mac_col = f"gw{aktif_gw}_mac"
-  day_cols = DAY_COLS_GW1 if aktif_gw == 1 else DAY_COLS_GW2
-  satilan_dokum = " + ".join(
-      [f"{r['isim']} ({r['fiyat']}M)" for _, r in satilan_df.iterrows()]
-  )
-
-  # Baz kadronun gün gün BC ve FC sayıları
-  base_bc = [
-      len(kalacak_df[(kalacak_df[d] > 0) & (kalacak_df["pozisyon"] == "BC")])
-      for d in day_cols
-  ]
-  base_fc = [
-      len(kalacak_df[(kalacak_df[d] > 0) & (kalacak_df["pozisyon"] == "FC")])
-      for d in day_cols
-  ]
-
-  # Sadece sakat olmayan ve takımda yer almayan adaylar
-  adaylar = df[
-      (~df["isim"].isin(haric_isimler)) & (df["sakatlik"] != "i")
-  ].copy()
-
-  # Günlük maç dizilerini aday nesnesine gömüyoruz
-  aday_kayitlari = []
-  for _, r in adaylar.iterrows():
-    m_days = [int(r.get(d, 0) > 0) for d in day_cols]
-    aday_kayitlari.append({
-        "isim": r["isim"],
-        "takim": r["takim"],
-        "pozisyon": r["pozisyon"],
-        "fiyat": float(r["fiyat"]),
-        "mac_sayisi": int(r.get(mac_col, 0)),
-        "m_days": m_days,
-    })
-
-  oneriler = []
-
-  # --- 1 OYUNCU TRANSFERİ ---
-  if len(satilacaklar) == 1:
-    pos = gerekli_pozisyonlar[0]
-    uygun = [
-        p
-        for p in aday_kayitlari
-        if p["pozisyon"] == pos and p["fiyat"] <= toplam_butce
-    ]
-
-    for p in uygun:
-      if mevcut_takim_sayilari.get(p["takim"], 0) < 2:
-        kalan = round(toplam_butce - p["fiyat"], 1)
-        cur_bc = list(base_bc)
-        cur_fc = list(base_fc)
-        for i in range(len(day_cols)):
-          if p["m_days"][i]:
-            if pos == "BC":
-              cur_bc[i] += 1
-            else:
-              cur_fc[i] += 1
-
-        efektif_mac = _hizli_efektif_hesapla(cur_bc, cur_fc)
-        baslik = (
-            f"{p['isim']} ({p['takim']} - {p['fiyat']}M) ➔ Toplam"
-            f" {p['mac_sayisi']} Maç (Sahada: {efektif_mac} Maç)"
-        )
-        skor = (efektif_mac * 1000) + (p["mac_sayisi"] * 10) + p["fiyat"]
-
-        oneriler.append({
-            "baslik": baslik,
-            "skor": skor,
-            "efektif_mac": efektif_mac,
-            "gelen_dokum": f"{p['isim']} ({p['fiyat']}M)",
-            "gelen_maliyet": p["fiyat"],
-            "satilan_dokum": satilan_dokum,
-            "satilan_gelir": satis_geliri,
-            "kalan_butce": kalan,
-            "isimler": [p["isim"]],
-        })
-
-  # --- 2 OYUNCU TRANSFERİ ---
-  elif len(satilacaklar) == 2:
-    pos1, pos2 = gerekli_pozisyonlar[0], gerekli_pozisyonlar[1]
-
-    # Bütçe filtresi ile adayları alıyoruz (başta kesinti yapmadan!)
-    pool1 = [
-        p
-        for p in aday_kayitlari
-        if p["pozisyon"] == pos1 and p["fiyat"] <= (toplam_butce - 4.5)
-    ]
-    pool2 = [
-        p
-        for p in aday_kayitlari
-        if p["pozisyon"] == pos2 and p["fiyat"] <= (toplam_butce - 4.5)
-    ]
-
-    # Hız için maç ve fiyata göre sıralayıp en iyi 70'er adayı alıyoruz
-    pool1.sort(key=lambda x: (x["mac_sayisi"], x["fiyat"]), reverse=True)
-    pool2.sort(key=lambda x: (x["mac_sayisi"], x["fiyat"]), reverse=True)
-    pool1 = pool1[:70]
-    pool2 = pool2[:70]
-
-    if pos1 == pos2:
-      n = len(pool1)
-      for i in range(n):
-        p1 = pool1[i]
-        for j in range(i + 1, n):
-          p2 = pool1[j]
-          maliyet = round(p1["fiyat"] + p2["fiyat"], 2)
-          if maliyet > toplam_butce:
+def hesapla_efektif_mac(kadro_df, day_cols):
+    toplam_sahada = 0
+    for day_col in day_cols:
+        if day_col not in kadro_df.columns:
+            continue
+        maci_olanlar = kadro_df[kadro_df[day_col] > 0]
+        if maci_olanlar.empty:
             continue
 
-          t1, t2 = p1["takim"], p2["takim"]
-          if (
-              (t1 == t2 and mevcut_takim_sayilari.get(t1, 0) >= 1)
-              or mevcut_takim_sayilari.get(t1, 0) >= 2
-              or mevcut_takim_sayilari.get(t2, 0) >= 2
-          ):
-            continue
+        bc_count = len(maci_olanlar[maci_olanlar["pozisyon"] == "BC"])
+        fc_count = len(maci_olanlar[maci_olanlar["pozisyon"] == "FC"])
 
-          kalan = round(toplam_butce - maliyet, 1)
-          cur_bc = list(base_bc)
-          cur_fc = list(base_fc)
-          for k in range(len(day_cols)):
-            ek_bc = (
-                (p1["m_days"][k] if pos1 == "BC" else 0)
-                + (p2["m_days"][k] if pos2 == "BC" else 0)
-            )
-            ek_fc = (
-                (p1["m_days"][k] if pos1 == "FC" else 0)
-                + (p2["m_days"][k] if pos2 == "FC" else 0)
-            )
-            cur_bc[k] += ek_bc
-            cur_fc[k] += ek_fc
+        opt1 = min(bc_count, 3) + min(fc_count, 2)
+        opt2 = min(bc_count, 2) + min(fc_count, 3)
+        toplam_sahada += min(5, max(opt1, opt2))
 
-          efektif_mac = _hizli_efektif_hesapla(cur_bc, cur_fc)
-          top_m = p1["mac_sayisi"] + p2["mac_sayisi"]
+    return toplam_sahada
 
-          baslik = (
-              f"{p1['isim']} ({p1['fiyat']}M) + {p2['isim']} ({p2['fiyat']}M) ➔"
-              f" Toplam {top_m} Maç (Sahada: {efektif_mac} Maç)"
-          )
-          skor = (efektif_mac * 1000) + (top_m * 10) + maliyet
+def transferleri_hesapla(df, kadro_df, satilacak_isimler, kasa, suanki_kadro_isimler, aktif_gw=1):
+    satilanlar_df = kadro_df[kadro_df["isim"].isin(satilacak_isimler)]
+    kalan_kadro_df = kadro_df[~kadro_df["isim"].isin(satilacak_isimler)]
 
-          oneriler.append({
-              "baslik": baslik,
-              "skor": skor,
-              "efektif_mac": efektif_mac,
-              "gelen_dokum": (
-                  f"{p1['isim']} ({p1['fiyat']}M) + {p2['isim']} ({p2['fiyat']}M)"
-              ),
-              "gelen_maliyet": maliyet,
-              "satilan_dokum": satilan_dokum,
-              "satilan_gelir": satis_geliri,
-              "kalan_butce": kalan,
-              "isimler": [p1["isim"], p2["isim"]],
-          })
-    else:
-      for p1 in pool1:
-        for p2 in pool2:
-          if p1["isim"] == p2["isim"]:
-            continue
-          maliyet = round(p1["fiyat"] + p2["fiyat"], 2)
-          if maliyet > toplam_butce:
-            continue
+    k_sayisi = len(satilacak_isimler)
+    if k_sayisi not in [1, 2]:
+        return []
 
-          t1, t2 = p1["takim"], p2["takim"]
-          if (
-              (t1 == t2 and mevcut_takim_sayilari.get(t1, 0) >= 1)
-              or mevcut_takim_sayilari.get(t1, 0) >= 2
-              or mevcut_takim_sayilari.get(t2, 0) >= 2
-          ):
-            continue
+    gelen_butce = satilanlar_df["fiyat"].sum()
+    toplam_butce = round(gelen_butce + kasa, 1)
+    gerekli_pozisyonlar = sorted(satilanlar_df["pozisyon"].tolist())
 
-          kalan = round(toplam_butce - maliyet, 1)
-          cur_bc = list(base_bc)
-          cur_fc = list(base_fc)
-          for k in range(len(day_cols)):
-            ek_bc = (
-                (p1["m_days"][k] if pos1 == "BC" else 0)
-                + (p2["m_days"][k] if pos2 == "BC" else 0)
-            )
-            ek_fc = (
-                (p1["m_days"][k] if pos1 == "FC" else 0)
-                + (p2["m_days"][k] if pos2 == "FC" else 0)
-            )
-            cur_bc[k] += ek_bc
-            cur_fc[k] += ek_fc
+    havuz = df[(~df["isim"].isin(suanki_kadro_isimler)) & (df["durum"] != "Sakat") & (df["sakatlik"] != "u")].copy()
+    day_cols = get_day_cols(df, aktif_gw)
+    gw_mac_col = f"gw{aktif_gw}_mac"
 
-          efektif_mac = _hizli_efektif_hesapla(cur_bc, cur_fc)
-          top_m = p1["mac_sayisi"] + p2["mac_sayisi"]
+    oneriler = []
 
-          baslik = (
-              f"{p1['isim']} ({p1['fiyat']}M) + {p2['isim']} ({p2['fiyat']}M) ➔"
-              f" Toplam {top_m} Maç (Sahada: {efektif_mac} Maç)"
-          )
-          skor = (efektif_mac * 1000) + (top_m * 10) + maliyet
+    if k_sayisi == 1:
+        pos = gerekli_pozisyonlar[0]
+        adaylar = havuz[(havuz["pozisyon"] == pos) & (havuz["fiyat"] <= toplam_butce)].copy()
 
-          oneriler.append({
-              "baslik": baslik,
-              "skor": skor,
-              "efektif_mac": efektif_mac,
-              "gelen_dokum": (
-                  f"{p1['isim']} ({p1['fiyat']}M) + {p2['isim']} ({p2['fiyat']}M)"
-              ),
-              "gelen_maliyet": maliyet,
-              "satilan_dokum": satilan_dokum,
-              "satilan_gelir": satis_geliri,
-              "kalan_butce": kalan,
-              "isimler": [p1["isim"], p2["isim"]],
-          })
+        for _, p in adaylar.iterrows():
+            gecici_kadro = pd.concat([kalan_kadro_df, pd.DataFrame([p])])
+            if gecici_kadro["takim"].value_counts().max() > 2:
+                continue
 
-  # En yüksek skora sahip ilk 5 alternatif
-  return sorted(oneriler, key=lambda x: x["skor"], reverse=True)[:5]
+            sahada_mac = hesapla_efektif_mac(gecici_kadro, day_cols)
+            kalan_b = round(toplam_butce - p["fiyat"], 1)
+
+            oneriler.append({
+                "baslik": f"{p['isim']} ({p['takim']} - {p['fiyat']}M) -> Toplam {p[gw_mac_col]} Mac (Sahada: {sahada_mac} Mac)",
+                "kalan_butce": kalan_b,
+                "sahada_mac": sahada_mac,
+                "toplam_mac": p[gw_mac_col],
+                "toplam_fiyat": p["fiyat"],
+                "isimler": [p["isim"]],
+                "takimlar": [p["takim"]]
+            })
+
+    elif k_sayisi == 2:
+        pos1, pos2 = gerekli_pozisyonlar[0], gerekli_pozisyonlar[1]
+
+        if pos1 == pos2:
+            adaylar = havuz[havuz["pozisyon"] == pos1]
+            kombinasyonlar = list(itertools.combinations(adaylar.iterrows(), 2))
+        else:
+            adaylar1 = havuz[havuz["pozisyon"] == pos1]
+            adaylar2 = havuz[havuz["pozisyon"] == pos2]
+            kombinasyonlar = list(itertools.product(adaylar1.iterrows(), adaylar2.iterrows()))
+
+        for (_, p1), (_, p2) in kombinasyonlar:
+            maliyet = round(p1["fiyat"] + p2["fiyat"], 1)
+            if maliyet > toplam_butce:
+                continue
+
+            gecici_kadro = pd.concat([kalan_kadro_df, pd.DataFrame([p1, p2])])
+            if gecici_kadro["takim"].value_counts().max() > 2:
+                continue
+
+            sahada_mac = hesapla_efektif_mac(gecici_kadro, day_cols)
+            kalan_b = round(toplam_butce - maliyet, 1)
+            top_mac = p1[gw_mac_col] + p2[gw_mac_col]
+
+            oneriler.append({
+                "baslik": f"{p1['isim']} ({p1['fiyat']}M) + {p2['isim']} ({p2['fiyat']}M) -> Toplam {top_mac} Mac (Sahada: {sahada_mac} Mac)",
+                "kalan_butce": kalan_b,
+                "sahada_mac": sahada_mac,
+                "toplam_mac": top_mac,
+                "toplam_fiyat": maliyet,
+                "isimler": [p1["isim"], p2["isim"]],
+                "takimlar": [p1["takim"], p2["takim"]]
+            })
+
+    if not oneriler:
+        return []
+
+    oneriler = sorted(oneriler, key=lambda x: (x["sahada_mac"], x["toplam_mac"], x["toplam_fiyat"]), reverse=True)
+
+    filtrelenmis_oneriler = []
+    gorulen_takimlar = set()
+
+    for o in oneriler:
+        ana_takim = o["takimlar"][0]
+        if ana_takim not in gorulen_takimlar:
+            filtrelenmis_oneriler.append(o)
+            gorulen_takimlar.add(ana_takim)
+        if len(filtrelenmis_oneriler) == 5:
+            break
+
+    if len(filtrelenmis_oneriler) < 5:
+        for o in oneriler:
+            if o not in filtrelenmis_oneriler:
+                filtrelenmis_oneriler.append(o)
+            if len(filtrelenmis_oneriler) == 5:
+                break
+
+    return filtrelenmis_oneriler

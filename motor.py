@@ -3,7 +3,6 @@ import pandas as pd
 import requests
 
 def verileri_guncelle():
-    print("🏀 NBA Fantasy Verileri Güncelleniyor...")
     STATIC_URL = "https://nbafantasy.nba.com/api/bootstrap-static/"
     FIXTURES_URL = "https://nbafantasy.nba.com/api/fixtures/"
 
@@ -45,21 +44,18 @@ def verileri_guncelle():
         if ev_id:
             fixtures_by_event.setdefault(ev_id, []).append(f)
 
-    team_gw1_days = {t: [0] * len(gw_days_order.get(1, [])) for t in teams.values()}
-    for idx, ev_id in enumerate(gw_days_order.get(1, [])):
-        for f in fixtures_by_event.get(ev_id, []):
-            ht = teams.get(f.get("team_h"))
-            at = teams.get(f.get("team_a"))
-            if ht: team_gw1_days[ht][idx] += 1
-            if at: team_gw1_days[at][idx] += 1
+    # Dinamik Gameweek Gün Sayısı (Her GW kendi uzunluğu kadar gün alır)
+    gw_day_counts = {gw: len(gw_days_order.get(gw, [])) for gw in range(1, 6)}
 
-    team_gw2_days = {t: [0] * len(gw_days_order.get(2, [])) for t in teams.values()}
-    for idx, ev_id in enumerate(gw_days_order.get(2, [])):
-        for f in fixtures_by_event.get(ev_id, []):
-            ht = teams.get(f.get("team_h"))
-            at = teams.get(f.get("team_a"))
-            if ht: team_gw2_days[ht][idx] += 1
-            if at: team_gw2_days[at][idx] += 1
+    team_gw_days = {}
+    for gw in range(1, 6):
+        team_gw_days[gw] = {t: [0] * gw_day_counts[gw] for t in teams.values()}
+        for idx, ev_id in enumerate(gw_days_order.get(gw, [])):
+            for f in fixtures_by_event.get(ev_id, []):
+                ht = teams.get(f.get("team_h"))
+                at = teams.get(f.get("team_a"))
+                if ht: team_gw_days[gw][ht][idx] += 1
+                if at: team_gw_days[gw][at][idx] += 1
 
     gw_team_matches = {t_code: {} for t_code in teams.values()}
     gw_team_b2b = {t_code: {} for t_code in teams.values()}
@@ -73,8 +69,8 @@ def verileri_guncelle():
                 cnt = sum(1 for f in dfix if teams.get(f.get("team_h")) == t_code or teams.get(f.get("team_a")) == t_code)
                 d_counts.append(cnt)
             gw_team_matches[t_code][f"gw{gw}_mac"] = sum(d_counts)
-            has_b2b = any(d_counts[i] > 0 and d_counts[i+1] > 0 for i in range(len(d_counts)-1))
-            gw_team_b2b[t_code][f"gw{gw}_b2b"] = "Var ⚠️" if has_b2b else "Yok"
+            has_b2b = any(d_counts[i] > 0 and d_counts[i+1] > 0 for i in range(len(d_counts)-1)) if len(d_counts) > 1 else False
+            gw_team_b2b[t_code][f"gw{gw}_b2b"] = "Var" if has_b2b else "Yok"
 
     oyuncu_listesi = []
 
@@ -115,12 +111,12 @@ def verileri_guncelle():
             "f_dakika": 0.0, "f_ort_puan": 0.0, "f_sayi": 0.0, "f_ribaund": 0.0, "f_asist": 0.0, "f_top_calma": 0.0, "f_blok": 0.0
         }
 
-        days_gw1 = team_gw1_days.get(t_code, [0] * 6)
-        for d_idx, cnt in enumerate(days_gw1, start=1):
+        # GW1 Dinamik Gün Kolonları (d1, d2, ...)
+        for d_idx, cnt in enumerate(team_gw_days[1].get(t_code, []), start=1):
             kayit[f"d{d_idx}"] = cnt
 
-        days_gw2 = team_gw2_days.get(t_code, [0] * 6)
-        for d_idx, cnt in enumerate(days_gw2, start=1):
+        # GW2 Dinamik Gün Kolonları (gw2_d1, gw2_d2, ...)
+        for d_idx, cnt in enumerate(team_gw_days[2].get(t_code, []), start=1):
             kayit[f"gw2_d{d_idx}"] = cnt
 
         for gw in range(1, 6):
@@ -131,7 +127,6 @@ def verileri_guncelle():
 
     df = pd.DataFrame(oyuncu_listesi)
     df.to_csv("oyuncular.csv", index=False)
-    print("✅ oyuncular.csv başarıyla güncellendi!")
     return df
 
 if __name__ == "__main__":
