@@ -11,7 +11,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- GELİŞMİŞ NBA DARK THEME CSS ---
+# --- RESPONSIVE & MOBILE-FIRST NBA DARK THEME CSS ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
@@ -40,7 +40,7 @@ st.markdown("""
         letter-spacing: 1px;
     }
 
-    /* ARAMA ÇUBUĞU: Sağdaki açılır oku gizle, tam bir Search Bar yap */
+    /* ARAMA ÇUBUĞU */
     div[data-testid="stSelectbox"] svg {
         display: none !important;
     }
@@ -61,6 +61,7 @@ st.markdown("""
         border-radius: 10px;
         padding: 12px 16px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+        margin-bottom: 8px;
     }
     .metric-label {
         font-size: 0.70rem;
@@ -85,7 +86,7 @@ st.markdown("""
     .metric-sub.success { color: #10b981; }
     .metric-sub.danger { color: #ef4444; }
 
-    /* Mevki Renkleri (BC Mavi, FC Turuncu) */
+    /* Mevki Renkleri */
     .badge-bc {
         background: rgba(56, 189, 248, 0.16);
         color: #38bdf8;
@@ -123,7 +124,7 @@ st.markdown("""
     .badge-waste { background: rgba(239, 68, 68, 0.12); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.25); font-weight:700; font-size:0.72rem; padding:3px 8px; border-radius:6px; }
     .badge-clean { background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.25); font-weight:700; font-size:0.72rem; padding:3px 8px; border-radius:6px; }
 
-    /* Canlı Butonlar */
+    /* Butonlar */
     .btn-detay > button {
         background-color: #0284c7 !important;
         color: #ffffff !important;
@@ -169,7 +170,6 @@ st.markdown("""
         letter-spacing: 0.5px !important;
         border-radius: 6px !important;
         height: 38px !important;
-        margin-top: 1px !important;
     }
     .btn-guncelle > button:hover {
         background-color: #1e40af !important;
@@ -182,7 +182,6 @@ st.markdown("""
         font-size: 0.75rem !important;
         border-radius: 6px !important;
         height: 38px !important;
-        margin-top: 1px !important;
     }
     .btn-sil > button:hover {
         background-color: #991b1b !important;
@@ -197,6 +196,34 @@ st.markdown("""
         padding: 12px 18px;
         margin: 12px 0 16px 0;
         font-size: 0.90rem;
+    }
+
+    /* MOBİL VE KÜÇÜK EKRAN UYARLAMALARI (RESPONSIVE) */
+    @media (max-width: 768px) {
+        .nba-title-text {
+            font-size: 1.35rem !important;
+        }
+        .nba-subtitle-text {
+            font-size: 0.65rem !important;
+        }
+        .metric-card {
+            padding: 10px 12px !important;
+        }
+        .metric-value {
+            font-size: 1.15rem !important;
+        }
+        /* Tablo başlıklarını mobilde gizle, dikey kart formatına bırak */
+        .desktop-table-header {
+            display: none !important;
+        }
+        /* Mobil kart iç boşlukları */
+        .mobile-card-row {
+            background: #111827;
+            border: 1px solid #1f2937;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+        }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -265,12 +292,12 @@ default_names = [
     "Joel Embiid", "Zion Williamson", "Walker Kessler", "Jusuf Nurkic", "Tolu Smith"
 ]
 
-# Header Bar
+# Header Bar (Mobilde ve Masaüstünde Esnek Düzen)
 c_head, c_mgr, c_del, c_sync = st.columns([2.5, 1.4, 0.45, 0.85])
 with c_head:
     st.markdown("""
-    <div style="display:flex; align-items:center; gap:14px; padding-top:4px;">
-        <img src="https://cdn.nba.com/logos/leagues/logo-nba.svg" height="42" style="display:inline-block; vertical-align:middle;">
+    <div style="display:flex; align-items:center; gap:12px; padding-top:4px;">
+        <img src="https://cdn.nba.com/logos/leagues/logo-nba.svg" height="38" style="display:inline-block; vertical-align:middle;">
         <div>
             <h1 class="nba-title-text">NBA FANTASY SIMULATOR</h1>
             <div class="nba-subtitle-text">KADRO VE FİKSTÜR OPTİMİZASYON MERKEZİ</div>
@@ -434,7 +461,7 @@ def oyuncu_popup(isim):
     c6.metric("Top Çalma", f"{p.get('f_top_calma', 0.0):.1f}", delta=format_delta(p.get("top_calma", 0.0), p.get("f_top_calma", 0.0)))
     c7.metric("Blok", f"{p.get('f_blok', 0.0):.1f}", delta=format_delta(p.get("blok", 0.0), p.get("f_blok", 0.0)))
 
-# --- SPOTLIGHT ARAMA ÇUBUĞU (KESİN ÇÖZÜM: DİNAMİK KEY İLE OTOMATİK SIFIRLAMA) ---
+# --- SPOTLIGHT ARAMA ÇUBUĞU (KENDİNİ SIFIRLAYAN SİSTEM) ---
 if "search_key_counter" not in st.session_state:
     st.session_state["search_key_counter"] = 0
 if "gosterilecek_oyuncu" not in st.session_state:
@@ -444,7 +471,6 @@ def on_oyuncu_secildi():
     secim = st.session_state.get(f"spotlight_search_{st.session_state['search_key_counter']}")
     if secim:
         st.session_state["gosterilecek_oyuncu"] = secim
-        # Widget'ı tamamen yok edip boş olarak baştan oluşturmak için sayacı artırıyoruz:
         st.session_state["search_key_counter"] += 1
 
 st.selectbox(
@@ -500,7 +526,7 @@ kasa = round(100.0 - harcanan, 1)
 efektif_gw1 = hesaplayici.hesapla_efektif_mac(kadro_df, day_cols_gw1) if len(kadro_df) == 10 else 0
 efektif_gw2 = hesaplayici.hesapla_efektif_mac(kadro_df, day_cols_gw2) if len(kadro_df) == 10 else 0
 
-m1, m2, m3, m4, m5 = st.columns(5)
+m1, m2, m3, m4, m5 = st.columns([1, 1, 1, 1, 1])
 
 with m1:
     st.markdown(f"""
@@ -596,16 +622,20 @@ elif sirala_kriter == f"GW{GW_NOW} Maç Sayısı (Çoktan Aza)":
 elif sirala_kriter == f"GW{GW_NEXT} Maç Sayısı (Çoktan Aza)":
     kadro_df = kadro_df.sort_values(by=[f"gw{GW_NEXT}_mac", "fiyat"], ascending=[False, False])
 
-h1, h2, h3, h4, h5, h6, h7 = st.columns([2.5, 0.8, 1.0, 1.1, 1.1, 2.4, 1.1])
-with h1: st.caption("OYUNCU")
-with h2: st.caption("MEVKİ")
-with h3: st.caption("FİYAT")
-with h4: st.caption(f"GW{GW_NOW}")
-with h5: st.caption(f"GW{GW_NEXT}")
-with h6: st.caption("DURUM / GW2 İSRAF")
-with h7: st.caption("İŞLEM")
-
-st.markdown("<hr style='margin:2px 0 10px 0; border-color:#1e293b;'>", unsafe_allow_html=True)
+# Masaüstü Tablo Başlığı
+st.markdown("""
+<div class="desktop-table-header">
+    <div style="display:flex; justify-content:space-between; color:#64748b; font-size:0.75rem; font-weight:700; padding:4px 0 8px 0; border-bottom:1px solid #1e293b;">
+        <span style="flex:2.5;">OYUNCU</span>
+        <span style="flex:0.8;">MEVKİ</span>
+        <span style="flex:1.0;">FİYAT</span>
+        <span style="flex:1.1;">GW1</span>
+        <span style="flex:1.1;">GW2</span>
+        <span style="flex:2.4;">DURUM / İSRAF</span>
+        <span style="flex:1.1; text-align:right;">İŞLEM</span>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 for idx, p in kadro_df.iterrows():
     c1, c2, c3, c4, c5, c6, c7 = st.columns([2.5, 0.8, 1.0, 1.1, 1.1, 2.4, 1.1])
@@ -663,7 +693,7 @@ for idx, p in kadro_df.iterrows():
 
 st.write("")
 
-# --- 5. GÜNLÜK MAÇ & SAHAYA ÇIKIŞ MATRİSİ ---
+# --- 5. GÜNLÜK MAÇ & SAHAYA ÇIKIŞ MATRİSİ (YATAY SCROLL DESTEKLİ) ---
 def renkli_doluluk_badge(sahaya_cikan):
     renk_map = {
         5: ("#059669", "#ecfdf5"),
@@ -698,7 +728,7 @@ def render_matris_html(day_cols_list):
         satirlar.append(f"""<tr style="border-bottom:1px solid #172033;"><td style="padding:10px 14px; font-weight:700;">Gün {d_idx}</td><td style="padding:10px 14px; font-weight:700;">{bc_count + fc_count}</td><td style="padding:10px 14px; text-align:center;">{renkli_doluluk_badge(sahaya_cikan)}</td><td style="padding:10px 14px;">{', '.join(bc_kisalar) if bc_kisalar else '—'}</td><td style="padding:10px 14px;">{', '.join(fc_kisalar) if fc_kisalar else '—'}</td></tr>""")
 
     govde = "".join(satirlar)
-    return f"""<table style="width:100%; border-collapse:collapse; background:#0f172a; border-radius:8px; overflow:hidden; font-size:0.85rem;"><thead><tr style="border-bottom:1px solid #1e293b; color:#94a3b8; text-align:left;"><th style="padding:10px 14px;">GÜN</th><th style="padding:10px 14px;">MAÇI OLAN</th><th style="padding:10px 14px; text-align:center;">SAHA DOLULUK</th><th style="padding:10px 14px;">BC OYUNCULARI</th><th style="padding:10px 14px;">FC OYUNCULARI</th></tr></thead><tbody>{govde}</tbody></table>"""
+    return f"""<div style="overflow-x:auto; width:100%;"><table style="width:100%; min-width:550px; border-collapse:collapse; background:#0f172a; border-radius:8px; font-size:0.85rem;"><thead><tr style="border-bottom:1px solid #1e293b; color:#94a3b8; text-align:left;"><th style="padding:10px 14px;">GÜN</th><th style="padding:10px 14px;">MAÇI OLAN</th><th style="padding:10px 14px; text-align:center;">SAHA DOLULUK</th><th style="padding:10px 14px;">BC OYUNCULARI</th><th style="padding:10px 14px;">FC OYUNCULARI</th></tr></thead><tbody>{govde}</tbody></table></div>"""
 
 st.markdown("#### GÜNLÜK MAÇ VE SAHA DAĞILIM MATRİSİ")
 tab_gw1, tab_gw2 = st.tabs(["Bu Hafta (GW1)", "Gelecek Hafta (GW2)"])
