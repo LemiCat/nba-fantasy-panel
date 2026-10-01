@@ -117,6 +117,35 @@ st.markdown("""
         border-radius: 6px;
     }
 
+    /* Fiyat Değişim Rozetleri */
+    .badge-price-up {
+        background: rgba(16, 185, 129, 0.15);
+        color: #34d399;
+        border: 1px solid rgba(16, 185, 129, 0.35);
+        font-weight: 800;
+        font-size: 0.75rem;
+        padding: 2px 7px;
+        border-radius: 5px;
+    }
+    .badge-price-down {
+        background: rgba(239, 68, 68, 0.15);
+        color: #f87171;
+        border: 1px solid rgba(239, 68, 68, 0.35);
+        font-weight: 800;
+        font-size: 0.75rem;
+        padding: 2px 7px;
+        border-radius: 5px;
+    }
+    .badge-price-neutral {
+        background: rgba(100, 116, 139, 0.15);
+        color: #94a3b8;
+        border: 1px solid rgba(100, 116, 139, 0.3);
+        font-weight: 700;
+        font-size: 0.75rem;
+        padding: 2px 7px;
+        border-radius: 5px;
+    }
+
     /* Durum Rozetleri */
     .badge-out { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); font-weight:700; font-size:0.72rem; padding:3px 8px; border-radius:6px; }
     .badge-dtd { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); font-weight:700; font-size:0.72rem; padding:3px 8px; border-radius:6px; }
@@ -198,7 +227,6 @@ st.markdown("""
         font-size: 0.90rem;
     }
 
-    /* MOBİL VE KÜÇÜK EKRAN UYARLAMALARI (RESPONSIVE) */
     @media (max-width: 768px) {
         .nba-title-text {
             font-size: 1.35rem !important;
@@ -212,17 +240,8 @@ st.markdown("""
         .metric-value {
             font-size: 1.15rem !important;
         }
-        /* Tablo başlıklarını mobilde gizle, dikey kart formatına bırak */
         .desktop-table-header {
             display: none !important;
-        }
-        /* Mobil kart iç boşlukları */
-        .mobile-card-row {
-            background: #111827;
-            border: 1px solid #1f2937;
-            border-radius: 8px;
-            padding: 10px;
-            margin-bottom: 8px;
         }
     }
 </style>
@@ -268,7 +287,7 @@ if not os.path.exists("oyuncular.csv"):
 else:
     try:
         df = pd.read_csv("oyuncular.csv")
-        if "code" not in df.columns:
+        if "fiyat_degisim" not in df.columns or "code" not in df.columns:
             df = motor.verileri_guncelle()
     except Exception:
         df = motor.verileri_guncelle()
@@ -292,7 +311,7 @@ default_names = [
     "Joel Embiid", "Zion Williamson", "Walker Kessler", "Jusuf Nurkic", "Tolu Smith"
 ]
 
-# Header Bar (Mobilde ve Masaüstünde Esnek Düzen)
+# Header Bar
 c_head, c_mgr, c_del, c_sync = st.columns([2.5, 1.4, 0.45, 0.85])
 with c_head:
     st.markdown("""
@@ -369,14 +388,22 @@ GW_NEXT = 2
 kadro_df_gecici = df[df["isim"].isin(suanki_kadro_isimler)]
 takim_sayilari = kadro_df_gecici["takim"].value_counts().to_dict()
 
-# --- OYUNCU DETAY POP-UP MODAL ---
+# --- OYUNCU DETAY POP-UP MODAL (F/P & FİYAT DEĞİŞİM ROZETLİ) ---
 @st.dialog("Oyuncu Profili", width="large")
 def oyuncu_popup(isim):
     p = df[df["isim"] == isim].iloc[0]
     p_code = str(p.get("code", "")).replace(".0", "").strip()
     t_code = p.get("takim", "")
     pos = p.get("pozisyon", "FC")
+    fiyat = float(p.get("fiyat", 1.0))
+    fiyat_degisim = float(p.get("fiyat_degisim", 0.0))
     
+    # F/P Değerleri
+    ort_p = float(p.get("ort_puan", 0.0))
+    form_p = float(p.get("f_ort_puan", 0.0))
+    fp_sezon = round(ort_p / fiyat, 2) if fiyat > 0 else 0.0
+    fp_form = round(form_p / fiyat, 2) if fiyat > 0 else 0.0
+
     foto_url = f"https://ak-static.cms.nba.com/wp-content/uploads/headshots/nba/latest/260x190/{p_code}.png" if p_code else None
     logo_url = TEAM_LOGOS.get(t_code, None)
 
@@ -391,7 +418,16 @@ def oyuncu_popup(isim):
     with c_info:
         st.markdown(f"<h2 style='margin:0 0 6px 0;'>{p['isim']}</h2>", unsafe_allow_html=True)
         pos_badge = f"<span class='badge-bc'>BC</span>" if pos == "BC" else f"<span class='badge-fc'>FC</span>"
-        st.markdown(f"{pos_badge} <strong style='font-size:1.1rem; margin-left:8px;'>{p['fiyat']}M</strong>", unsafe_allow_html=True)
+        
+        # Fiyat Değişim Rozeti
+        if fiyat_degisim > 0:
+            price_badge = f"<span class='badge-price-up'>+{fiyat_degisim:.1f}M ↗</span>"
+        elif fiyat_degisim < 0:
+            price_badge = f"<span class='badge-price-down'>{fiyat_degisim:.1f}M ↘</span>"
+        else:
+            price_badge = "<span class='badge-price-neutral'>0.0M —</span>"
+
+        st.markdown(f"{pos_badge} <strong style='font-size:1.15rem; margin-left:8px; margin-right:6px;'>{fiyat:.1f}M</strong> {price_badge}", unsafe_allow_html=True)
         st.write("")
         if logo_url:
             st.image(logo_url, width=65)
@@ -435,6 +471,18 @@ def oyuncu_popup(isim):
                     st.rerun()
 
     st.markdown("---")
+    
+    # F/P Değerleri Göstergesi
+    st.markdown("##### ⚡ FİYAT / PERFORMANS (F/P VERİMLİLİĞİ)")
+    fp_c1, fp_c2 = st.columns(2)
+    with fp_c1:
+        st.metric("Sezon F/P Verimi", f"{fp_sezon} Puan/M", help="Ortalama Puan / Güncel Fiyat")
+    with fp_c2:
+        fp_fark = round(fp_form - fp_sezon, 2)
+        delta_str = f"+{fp_fark}" if fp_fark > 0 else f"{fp_fark}" if fp_fark < 0 else "0.0"
+        st.metric("Form F/P (Son 5 Maç)", f"{fp_form} Puan/M", delta=delta_str if (fp_sezon>0 or fp_form>0) else "—")
+
+    st.markdown("---")
     st.markdown("##### FİKSTÜR VE B2B YÜKÜ")
     f_col1, f_col2 = st.columns(2)
     with f_col1:
@@ -461,7 +509,7 @@ def oyuncu_popup(isim):
     c6.metric("Top Çalma", f"{p.get('f_top_calma', 0.0):.1f}", delta=format_delta(p.get("top_calma", 0.0), p.get("f_top_calma", 0.0)))
     c7.metric("Blok", f"{p.get('f_blok', 0.0):.1f}", delta=format_delta(p.get("blok", 0.0), p.get("f_blok", 0.0)))
 
-# --- SPOTLIGHT ARAMA ÇUBUĞU (KENDİNİ SIFIRLAYAN SİSTEM) ---
+# --- SPOTLIGHT ARAMA ÇUBUĞU ---
 if "search_key_counter" not in st.session_state:
     st.session_state["search_key_counter"] = 0
 if "gosterilecek_oyuncu" not in st.session_state:
@@ -494,6 +542,9 @@ kadro_df = df[df["isim"].isin(suanki_kadro_isimler)].copy()
 bc_toplam = len(kadro_df[kadro_df["pozisyon"] == "BC"])
 fc_toplam = len(kadro_df[kadro_df["pozisyon"] == "FC"])
 fazla_takimlar = [t for t, c in kadro_df["takim"].value_counts().items() if c > 2]
+
+# F/P Değerini Tabloya Ekle
+kadro_df["fp_skor"] = (kadro_df["ort_puan"] / kadro_df["fiyat"]).round(2)
 
 day_cols_gw1 = hesaplayici.get_day_cols(df, 1)
 day_cols_gw2 = hesaplayici.get_day_cols(df, 2)
@@ -596,6 +647,7 @@ with sort_col1:
         "Sırala:",
         options=[
             "GW2 En Çok Çakışanlar (Önce Satılacaklar)",
+            "Fiyat/Performans (En Verimliler Önce)",
             "Fiyat (Pahalıdan Ucuza)",
             "Fiyat (Ucuzdan Pahalıya)",
             "Mevki (BC Önce)",
@@ -609,6 +661,8 @@ with sort_col1:
 
 if sirala_kriter == "GW2 En Çok Çakışanlar (Önce Satılacaklar)":
     kadro_df = kadro_df.sort_values(by=["gw2_israf", "fiyat"], ascending=[False, False])
+elif sirala_kriter == "Fiyat/Performans (En Verimliler Önce)":
+    kadro_df = kadro_df.sort_values(by=["fp_skor", "fiyat"], ascending=[False, True])
 elif sirala_kriter == "Fiyat (Pahalıdan Ucuza)":
     kadro_df = kadro_df.sort_values(by="fiyat", ascending=False)
 elif sirala_kriter == "Fiyat (Ucuzdan Pahalıya)":
@@ -622,7 +676,6 @@ elif sirala_kriter == f"GW{GW_NOW} Maç Sayısı (Çoktan Aza)":
 elif sirala_kriter == f"GW{GW_NEXT} Maç Sayısı (Çoktan Aza)":
     kadro_df = kadro_df.sort_values(by=[f"gw{GW_NEXT}_mac", "fiyat"], ascending=[False, False])
 
-# Masaüstü Tablo Başlığı
 st.markdown("""
 <div class="desktop-table-header">
     <div style="display:flex; justify-content:space-between; color:#64748b; font-size:0.75rem; font-weight:700; padding:4px 0 8px 0; border-bottom:1px solid #1e293b;">
@@ -693,7 +746,7 @@ for idx, p in kadro_df.iterrows():
 
 st.write("")
 
-# --- 5. GÜNLÜK MAÇ & SAHAYA ÇIKIŞ MATRİSİ (YATAY SCROLL DESTEKLİ) ---
+# --- 5. GÜNLÜK MAÇ & SAHAYA ÇIKIŞ MATRİSİ ---
 def renkli_doluluk_badge(sahaya_cikan):
     renk_map = {
         5: ("#059669", "#ecfdf5"),

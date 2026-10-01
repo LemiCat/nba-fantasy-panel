@@ -44,7 +44,6 @@ def verileri_guncelle():
         if ev_id:
             fixtures_by_event.setdefault(ev_id, []).append(f)
 
-    # Dinamik Gameweek Gün Sayısı (Her GW kendi uzunluğu kadar gün alır)
     gw_day_counts = {gw: len(gw_days_order.get(gw, [])) for gw in range(1, 6)}
 
     team_gw_days = {}
@@ -84,8 +83,9 @@ def verileri_guncelle():
         player_code = p.get("code", "")
 
         current_cost = p.get("now_cost", 0) / 10.0
-        purchase_cost = p.get("cost_change_start", 0) / 10.0
-        if purchase_cost == 0: purchase_cost = current_cost
+        # Fiyat Değişimi (Sezon başından bu yana olan net fark)
+        cost_change = p.get("cost_change_start", 0) / 10.0
+        purchase_cost = current_cost - cost_change
 
         selling_price = purchase_cost + (int((current_cost - purchase_cost) * 10 / 2) / 10.0) if current_cost > purchase_cost else current_cost
 
@@ -103,6 +103,7 @@ def verileri_guncelle():
             "takim": t_code,
             "pozisyon": pos,
             "fiyat": current_cost,
+            "fiyat_degisim": cost_change,
             "satis_fiyati": selling_price,
             "sakatlik": status,
             "durum": durum,
@@ -111,11 +112,9 @@ def verileri_guncelle():
             "f_dakika": 0.0, "f_ort_puan": 0.0, "f_sayi": 0.0, "f_ribaund": 0.0, "f_asist": 0.0, "f_top_calma": 0.0, "f_blok": 0.0
         }
 
-        # GW1 Dinamik Gün Kolonları (d1, d2, ...)
         for d_idx, cnt in enumerate(team_gw_days[1].get(t_code, []), start=1):
             kayit[f"d{d_idx}"] = cnt
 
-        # GW2 Dinamik Gün Kolonları (gw2_d1, gw2_d2, ...)
         for d_idx, cnt in enumerate(team_gw_days[2].get(t_code, []), start=1):
             kayit[f"gw2_d{d_idx}"] = cnt
 
