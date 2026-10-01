@@ -7,7 +7,6 @@ def get_day_cols(df, gw=1):
     return sorted(cols, key=lambda x: int(x[len(prefix):]))
 
 def hesapla_efektif_mac(kadro_df, day_cols):
-    """app.py üst metrikleri için DataFrame tabanlı hesaplayıcı"""
     toplam_sahada = 0
     for day_col in day_cols:
         if day_col not in kadro_df.columns:
@@ -26,7 +25,6 @@ def hesapla_efektif_mac(kadro_df, day_cols):
     return toplam_sahada
 
 def hesapla_efektif_mac_hizli(kadro_records, day_cols):
-    """Simülatör içi döngüler için hafif/yıldırım hızlı sözlük tabanlı hesaplayıcı"""
     toplam_sahada = 0
     for day_col in day_cols:
         bc_count = 0
@@ -62,11 +60,11 @@ def transferleri_hesapla(df, kadro_df, satilacak_isimler, kasa, suanki_kadro_isi
     day_cols = get_day_cols(df, aktif_gw)
     gw_mac_col = f"gw{aktif_gw}_mac"
 
+    # Sakat veya listeden çıkarılmış olmayan tüm oyuncular
     havuz = df[
         (~df["isim"].isin(suanki_kadro_isimler)) & 
         (df["durum"] != "Sakat") & 
-        (df["sakatlik"] != "u") &
-        (df[gw_mac_col] > 0)
+        (df["sakatlik"] != "u")
     ].copy()
 
     kalan_records = kalan_kadro_df.to_dict("records")
@@ -102,12 +100,18 @@ def transferleri_hesapla(df, kadro_df, satilacak_isimler, kasa, suanki_kadro_isi
     elif k_sayisi == 2:
         pos1, pos2 = gerekli_pozisyonlar[0], gerekli_pozisyonlar[1]
 
+        # En ucuz oyuncu en az 4.5M olabileceği için tavan fiyat
+        max_tekil_fiyat = toplam_butce - 4.5
+
         if pos1 == pos2:
-            adaylar = havuz[(havuz["pozisyon"] == pos1) & (havuz["fiyat"] <= (toplam_butce - 4.5))].sort_values(by=[gw_mac_col, "fiyat"], ascending=[False, False]).head(40)
-            kombinasyonlar = list(itertools.combinations(adaylar.to_dict("records"), 2))
+            # Aynı mevkiden iki oyuncu satılıyorsa
+            adaylar = havuz[(havuz["pozisyon"] == pos1) & (havuz["fiyat"] <= max_tekil_fiyat)]
+            aday_records = adaylar.to_dict("records")
+            kombinasyonlar = list(itertools.combinations(aday_records, 2))
         else:
-            adaylar1 = havuz[(havuz["pozisyon"] == pos1) & (havuz["fiyat"] <= (toplam_butce - 4.5))].sort_values(by=[gw_mac_col, "fiyat"], ascending=[False, False]).head(30).to_dict("records")
-            adaylar2 = havuz[(havuz["pozisyon"] == pos2) & (havuz["fiyat"] <= (toplam_butce - 4.5))].sort_values(by=[gw_mac_col, "fiyat"], ascending=[False, False]).head(30).to_dict("records")
+            # Farklı mevkilerden iki oyuncu satılıyorsa
+            adaylar1 = havuz[(havuz["pozisyon"] == pos1) & (havuz["fiyat"] <= max_tekil_fiyat)].to_dict("records")
+            adaylar2 = havuz[(havuz["pozisyon"] == pos2) & (havuz["fiyat"] <= max_tekil_fiyat)].to_dict("records")
             kombinasyonlar = list(itertools.product(adaylar1, adaylar2))
 
         for p1_dict, p2_dict in kombinasyonlar:
@@ -115,11 +119,13 @@ def transferleri_hesapla(df, kadro_df, satilacak_isimler, kasa, suanki_kadro_isi
             if maliyet > toplam_butce:
                 continue
 
+            # Takım sınırları kontrolü
             t1, t2 = p1_dict["takim"], p2_dict["takim"]
-            t_counts = dict(kalan_takim_sayilari)
-            t_counts[t1] = t_counts.get(t1, 0) + 1
-            t_counts[t2] = t_counts.get(t2, 0) + 1
-            if t_counts[t1] > 2 or t_counts[t2] > 2:
+            
+            # Eğer iki transfer aynı takımdansa ve kadroda zaten o takımdan varsa geç
+            if t1 == t2 and kalan_takim_sayilari.get(t1, 0) >= 1:
+                continue
+            if kalan_takim_sayilari.get(t1, 0) >= 2 or kalan_takim_sayilari.get(t2, 0) >= 2:
                 continue
 
             gecici_kadro = kalan_records + [p1_dict, p2_dict]
@@ -140,6 +146,7 @@ def transferleri_hesapla(df, kadro_df, satilacak_isimler, kasa, suanki_kadro_isi
     if not oneriler:
         return []
 
+    # En yüksek sahada maç ve en verimli bütçe sıralaması
     oneriler = sorted(oneriler, key=lambda x: (x["sahada_mac"], x["toplam_mac"], x["toplam_fiyat"]), reverse=True)
 
     filtrelenmis_oneriler = []
