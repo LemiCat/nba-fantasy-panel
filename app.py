@@ -3,7 +3,6 @@ import requests
 import pandas as pd
 import streamlit as st
 from unicodedata import normalize
-from nba_api.stats.endpoints import leaguedashplayerstats
 
 st.set_page_config(page_title="NBA Fantasy Verim Paneli", layout="wide", page_icon="🏀")
 
@@ -16,20 +15,9 @@ def clean_name(name):
     name = re.sub(r"[^a-z0-9]", "", name)
     return name.strip()
 
-# NBA API'sinin bulut sunucularını engellemesini önleyen başlıklar
-CUSTOM_HEADERS = {
-    'Host': 'stats.nba.com',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    'Accept': 'application/json, text/plain, */*',
-    'Accept-Language': 'en-US,en;q=0.5',
-    'Referer': 'https://www.nba.com/',
-    'Origin': 'https://www.nba.com',
-    'Connection': 'keep-alive',
-}
-
 @st.cache_data(show_spinner=True, ttl=3600)
 def fetch_data():
-    # 1. Fantasy API
+    # 1. Fantasy API (Her zaman açık ve hızlıdır)
     url = "https://tr.nbafantasy.nba.com/api/bootstrap-static/"
     res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=15).json()
     teams = {t["id"]: t.get("short_name", t["name"]) for t in res["teams"]}
@@ -50,13 +38,8 @@ def fetch_data():
         })
     df_f = pd.DataFrame(fan_list)
 
-    # 2. NBA API (Özel Headers ve Timeout ile)
-    stats = leaguedashplayerstats.LeagueDashPlayerStats(
-        season="2024-25",
-        per_mode_detailed="PerGame",
-        headers=CUSTOM_HEADERS,
-        timeout=60
-    ).get_data_frames()[0]
+    # 2. NBA İstatistikleri (Depodaki CSV'den anında okunur)
+    stats = pd.read_csv("nba_stats.csv")
     
     cols = {
         "PLAYER_NAME": "nba_name",
@@ -91,10 +74,10 @@ def fetch_data():
 
 st.title("🏀 NBA Fantasy Tavan Bütçe & Verim Paneli")
 
-with st.spinner("NBA istatistikleri ve form durumları yükleniyor..."):
+with st.spinner("Veriler yükleniyor..."):
     try:
         df = fetch_data()
-        st.success("Veriler güncellendi!")
+        st.success("Veriler başarıyla yüklendi!")
     except Exception as e:
         st.error(f"Hata oluştu: {e}")
         st.stop()
