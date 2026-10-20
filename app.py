@@ -16,18 +16,28 @@ def clean_name(name):
     name = re.sub(r"[^a-z0-9]", "", name)
     return name.strip()
 
-@st.cache_data(show_spinner=True)
+# NBA API'sinin bulut sunucularını engellemesini önleyen başlıklar
+CUSTOM_HEADERS = {
+    'Host': 'stats.nba.com',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'application/json, text/plain, */*',
+    'Accept-Language': 'en-US,en;q=0.5',
+    'Referer': 'https://www.nba.com/',
+    'Origin': 'https://www.nba.com',
+    'Connection': 'keep-alive',
+}
+
+@st.cache_data(show_spinner=True, ttl=3600)
 def fetch_data():
-    # 1. Fantasy API - Takım Kısaltmaları ve Form Verisi
+    # 1. Fantasy API
     url = "https://tr.nbafantasy.nba.com/api/bootstrap-static/"
-    res = requests.get(url, timeout=15).json()
+    res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=15).json()
     teams = {t["id"]: t.get("short_name", t["name"]) for t in res["teams"]}
     
     fan_list = []
     for el in res["elements"]:
         f_name = f"{el['first_name']} {el['second_name']}"
         cost = el.get("now_cost", el.get("cost", 0))
-        # Form: Fantezi API'sindeki son maçlar performans ortalaması
         form_val = float(el.get("form", 0.0) or 0.0)
         
         fan_list.append({
@@ -40,11 +50,12 @@ def fetch_data():
         })
     df_f = pd.DataFrame(fan_list)
 
-    # 2. NBA API
+    # 2. NBA API (Özel Headers ve Timeout ile)
     stats = leaguedashplayerstats.LeagueDashPlayerStats(
         season="2024-25",
         per_mode_detailed="PerGame",
-        timeout=30
+        headers=CUSTOM_HEADERS,
+        timeout=60
     ).get_data_frames()[0]
     
     cols = {
@@ -64,7 +75,6 @@ def fetch_data():
     # 3. Hesaplamalar
     df_all = pd.merge(df_f, df_n, on="norm_name", how="inner")
     
-    # Formül: PTS + REB + 2*AST + 3*STL + 3*BLK
     df_all["FP"] = (
         df_all["pts"] * 1.0 +
         df_all["reb"] * 1.0 +
@@ -81,7 +91,6 @@ def fetch_data():
 
 st.title("🏀 NBA Fantasy Tavan Bütçe & Verim Paneli")
 
-# Veri yükleme
 with st.spinner("NBA istatistikleri ve form durumları yükleniyor..."):
     try:
         df = fetch_data()
@@ -99,7 +108,6 @@ min_p = float(df["price"].min())
 max_p = float(df["price"].max())
 tavan_maas = st.sidebar.slider("Tavan Maaş Sınırı (M$)", min_value=min_p, max_value=max_p, value=max_p, step=0.5)
 
-# Sahte verim patlamalarını engelleyen filtreler
 min_mac = st.sidebar.slider("Minimum Maç Sayısı (GP)", 1, 82, 15)
 min_dk = st.sidebar.slider("Minimum Süre (Dk)", 0, 40, 15)
 arama = st.sidebar.text_input("Oyuncu İsmi Ara")
@@ -121,7 +129,6 @@ if arama:
 
 sorted_table = filtered.sort_values(by="Value (FP/$)", ascending=False)
 
-# Görünüm Sütunları
 view_cols = [
     "full_name", "pos", "team_abbr", "price", "FP", "form",
     "Value (FP/$)", "FP/Min", "gp", "min", "pts", "reb", "ast", "stl", "blk", "FG%"
