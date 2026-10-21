@@ -15,9 +15,9 @@ def clean_name(name):
     name = re.sub(r"[^a-z0-9]", "", name)
     return name.strip()
 
-@st.cache_data(show_spinner=True, ttl=3600)
+@st.cache_data(show_spinner=True, ttl=1800)
 def fetch_data():
-    # 1. Fantasy API (Her zaman açık ve hızlıdır)
+    # 1. Fantasy API - Canlı Fantezi Verileri
     url = "https://tr.nbafantasy.nba.com/api/bootstrap-static/"
     res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=15).json()
     teams = {t["id"]: t.get("short_name", t["name"]) for t in res["teams"]}
@@ -38,7 +38,7 @@ def fetch_data():
         })
     df_f = pd.DataFrame(fan_list)
 
-    # 2. NBA İstatistikleri (Depodaki CSV'den anında okunur)
+    # 2. NBA İstatistikleri (2026-27 CSV Dosyası)
     stats = pd.read_csv("nba_stats.csv")
     
     cols = {
@@ -55,9 +55,19 @@ def fetch_data():
     df_n = stats[list(cols.keys())].rename(columns=cols)
     df_n["norm_name"] = df_n["nba_name"].apply(clean_name)
 
-    # 3. Hesaplamalar
-    df_all = pd.merge(df_f, df_n, on="norm_name", how="inner")
+    # 3. Left Join: 514 oyuncunun tamamı kalır, maçı olmayanlar sıfırla dolar
+    df_all = pd.merge(df_f, df_n, on="norm_name", how="left")
     
+    df_all["gp"] = df_all["gp"].fillna(0).astype(int)
+    df_all["min"] = df_all["min"].fillna(0.0)
+    df_all["pts"] = df_all["pts"].fillna(0.0)
+    df_all["reb"] = df_all["reb"].fillna(0.0)
+    df_all["ast"] = df_all["ast"].fillna(0.0)
+    df_all["stl"] = df_all["stl"].fillna(0.0)
+    df_all["blk"] = df_all["blk"].fillna(0.0)
+    df_all["fg_pct"] = df_all["fg_pct"].fillna(0.0)
+
+    # FP Hesaplama: PTS + REB + 2*AST + 3*STL + 3*BLK
     df_all["FP"] = (
         df_all["pts"] * 1.0 +
         df_all["reb"] * 1.0 +
@@ -72,12 +82,12 @@ def fetch_data():
     
     return df_all
 
-st.title("🏀 NBA Fantasy Tavan Bütçe & Verim Paneli")
+st.title("🏀 NBA Fantasy Tavan Bütçe & Verim Paneli (2026-27)")
 
-with st.spinner("Veriler yükleniyor..."):
+with st.spinner("Yeni sezon verileri yükleniyor..."):
     try:
         df = fetch_data()
-        st.success("Veriler başarıyla yüklendi!")
+        st.success("2026-27 Sezonu Verileri Güncellendi!")
     except Exception as e:
         st.error(f"Hata oluştu: {e}")
         st.stop()
@@ -91,8 +101,9 @@ min_p = float(df["price"].min())
 max_p = float(df["price"].max())
 tavan_maas = st.sidebar.slider("Tavan Maaş Sınırı (M$)", min_value=min_p, max_value=max_p, value=max_p, step=0.5)
 
-min_mac = st.sidebar.slider("Minimum Maç Sayısı (GP)", 1, 82, 15)
-min_dk = st.sidebar.slider("Minimum Süre (Dk)", 0, 40, 15)
+# Sezon başı olduğu için maç filtresi tabanı 0'dan başlar
+min_mac = st.sidebar.slider("Minimum Maç Sayısı (GP)", 0, 82, 0)
+min_dk = st.sidebar.slider("Minimum Süre (Dk)", 0, 40, 0)
 arama = st.sidebar.text_input("Oyuncu İsmi Ara")
 
 # Filtreleri uygula
@@ -110,7 +121,7 @@ elif pos_filter == "FC (Frontcourt)":
 if arama:
     filtered = filtered[filtered["full_name"].str.contains(arama, case=False)]
 
-sorted_table = filtered.sort_values(by="Value (FP/$)", ascending=False)
+sorted_table = filtered.sort_values(by="FP", ascending=False)
 
 view_cols = [
     "full_name", "pos", "team_abbr", "price", "FP", "form",
