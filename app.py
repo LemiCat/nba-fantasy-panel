@@ -26,9 +26,12 @@ def fetch_data():
     for el in res["elements"]:
         f_name = f"{el['first_name']} {el['second_name']}"
         cost = el.get("now_cost", el.get("cost", 0))
-        form_val = float(el.get("form", 0.0) or 0.0)
+        # Form verisi API'de 10 katı olarak geldiği için 10'a bölüyoruz
+        form_raw = float(el.get("form", 0.0) or 0.0)
+        form_val = form_raw / 10.0 if form_raw > 50 else form_raw
         
         fan_list.append({
+            "fantasy_id": el["id"],
             "full_name": f_name,
             "norm_name": clean_name(f_name),
             "team_abbr": teams.get(el["team"], "NBA"),
@@ -38,9 +41,8 @@ def fetch_data():
         })
     df_f = pd.DataFrame(fan_list)
 
-    # 2. NBA İstatistikleri (2026-27 CSV Dosyası)
+    # 2. NBA İstatistikleri (CSV)
     stats = pd.read_csv("nba_stats.csv")
-    
     cols = {
         "PLAYER_NAME": "nba_name",
         "GP": "gp",
@@ -54,9 +56,13 @@ def fetch_data():
     }
     df_n = stats[list(cols.keys())].rename(columns=cols)
     df_n["norm_name"] = df_n["nba_name"].apply(clean_name)
+    # NBA tarafında aynı isimde birden fazla satır varsa tekilleştir
+    df_n = df_n.drop_duplicates(subset=["norm_name"], keep="first")
 
-    # 3. Left Join: 514 oyuncunun tamamı kalır, maçı olmayanlar sıfırla dolar
+    # 3. Left Join ve Fantezi Havuzunu Birebir Koruma
     df_all = pd.merge(df_f, df_n, on="norm_name", how="left")
+    # Fantezi ID'si bazında tekilleştir (516 oyuncuya sabitler)
+    df_all = df_all.drop_duplicates(subset=["fantasy_id"], keep="first")
     
     df_all["gp"] = df_all["gp"].fillna(0).astype(int)
     df_all["min"] = df_all["min"].fillna(0.0)
@@ -67,7 +73,7 @@ def fetch_data():
     df_all["blk"] = df_all["blk"].fillna(0.0)
     df_all["fg_pct"] = df_all["fg_pct"].fillna(0.0)
 
-    # FP Hesaplama: PTS + REB + 2*AST + 3*STL + 3*BLK
+    # FP Hesaplama
     df_all["FP"] = (
         df_all["pts"] * 1.0 +
         df_all["reb"] * 1.0 +
@@ -84,7 +90,7 @@ def fetch_data():
 
 st.title("🏀 NBA Fantasy Tavan Bütçe & Verim Paneli (2026-27)")
 
-with st.spinner("Yeni sezon verileri yükleniyor..."):
+with st.spinner("2026-27 sezonu verileri yükleniyor..."):
     try:
         df = fetch_data()
         st.success("2026-27 Sezonu Verileri Güncellendi!")
@@ -101,7 +107,6 @@ min_p = float(df["price"].min())
 max_p = float(df["price"].max())
 tavan_maas = st.sidebar.slider("Tavan Maaş Sınırı (M$)", min_value=min_p, max_value=max_p, value=max_p, step=0.5)
 
-# Sezon başı olduğu için maç filtresi tabanı 0'dan başlar
 min_mac = st.sidebar.slider("Minimum Maç Sayısı (GP)", 0, 82, 0)
 min_dk = st.sidebar.slider("Minimum Süre (Dk)", 0, 40, 0)
 arama = st.sidebar.text_input("Oyuncu İsmi Ara")
@@ -121,7 +126,7 @@ elif pos_filter == "FC (Frontcourt)":
 if arama:
     filtered = filtered[filtered["full_name"].str.contains(arama, case=False)]
 
-sorted_table = filtered.sort_values(by="FP", ascending=False)
+sorted_table = filtered.sort_values(by="Value (FP/$)", ascending=False)
 
 view_cols = [
     "full_name", "pos", "team_abbr", "price", "FP", "form",
