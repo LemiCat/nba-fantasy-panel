@@ -15,20 +15,22 @@ def clean_name(name):
     name = re.sub(r"[^a-z0-9]", "", name)
     return name.strip()
 
-@st.cache_data(show_spinner=True, ttl=1800)
+@st.cache_data(show_spinner=True)
 def fetch_data():
-    # 1. Fantasy API - Canlı Fantezi Verileri
+    # 1. Fantasy API
     url = "https://tr.nbafantasy.nba.com/api/bootstrap-static/"
     res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=15).json()
     teams = {t["id"]: t.get("short_name", t["name"]) for t in res["teams"]}
     
     fan_list = []
     for el in res["elements"]:
+        # Sitedeki transfer listesinde sadece aktif ('a') ve oynayabilir ('d') oyuncular yer alır
+        if el.get("status") in ["u"]:
+            continue
+            
         f_name = f"{el['first_name']} {el['second_name']}"
         cost = el.get("now_cost", el.get("cost", 0))
-        # Form verisi API'de 10 katı olarak geldiği için 10'a bölüyoruz
         form_raw = float(el.get("form", 0.0) or 0.0)
-        form_val = form_raw / 10.0 if form_raw > 50 else form_raw
         
         fan_list.append({
             "fantasy_id": el["id"],
@@ -37,7 +39,7 @@ def fetch_data():
             "team_abbr": teams.get(el["team"], "NBA"),
             "pos": "BC" if el["element_type"] == 1 else "FC",
             "price": float(cost) / 10.0,
-            "form": form_val
+            "form": round(form_raw / 10.0, 1)  # 640.0 -> 64.0 dönüşümü
         })
     df_f = pd.DataFrame(fan_list)
 
@@ -56,12 +58,10 @@ def fetch_data():
     }
     df_n = stats[list(cols.keys())].rename(columns=cols)
     df_n["norm_name"] = df_n["nba_name"].apply(clean_name)
-    # NBA tarafında aynı isimde birden fazla satır varsa tekilleştir
     df_n = df_n.drop_duplicates(subset=["norm_name"], keep="first")
 
-    # 3. Left Join ve Fantezi Havuzunu Birebir Koruma
+    # 3. Birleştirme ve Tekilleştirme
     df_all = pd.merge(df_f, df_n, on="norm_name", how="left")
-    # Fantezi ID'si bazında tekilleştir (516 oyuncuya sabitler)
     df_all = df_all.drop_duplicates(subset=["fantasy_id"], keep="first")
     
     df_all["gp"] = df_all["gp"].fillna(0).astype(int)
@@ -73,7 +73,7 @@ def fetch_data():
     df_all["blk"] = df_all["blk"].fillna(0.0)
     df_all["fg_pct"] = df_all["fg_pct"].fillna(0.0)
 
-    # FP Hesaplama
+    # FP Formülü
     df_all["FP"] = (
         df_all["pts"] * 1.0 +
         df_all["reb"] * 1.0 +
@@ -90,7 +90,7 @@ def fetch_data():
 
 st.title("🏀 NBA Fantasy Tavan Bütçe & Verim Paneli (2026-27)")
 
-with st.spinner("2026-27 sezonu verileri yükleniyor..."):
+with st.spinner("2026-27 verileri yükleniyor..."):
     try:
         df = fetch_data()
         st.success("2026-27 Sezonu Verileri Güncellendi!")
@@ -98,7 +98,7 @@ with st.spinner("2026-27 sezonu verileri yükleniyor..."):
         st.error(f"Hata oluştu: {e}")
         st.stop()
 
-# Sol Filtre Paneli
+# Sol Filtreler
 st.sidebar.header("🎯 Filtreler")
 
 pos_filter = st.sidebar.radio("Mevki", ["Tümü", "BC (Backcourt)", "FC (Frontcourt)"])
@@ -111,7 +111,6 @@ min_mac = st.sidebar.slider("Minimum Maç Sayısı (GP)", 0, 82, 0)
 min_dk = st.sidebar.slider("Minimum Süre (Dk)", 0, 40, 0)
 arama = st.sidebar.text_input("Oyuncu İsmi Ara")
 
-# Filtreleri uygula
 filtered = df[
     (df["price"] <= tavan_maas) & 
     (df["gp"] >= min_mac) & 
@@ -126,7 +125,7 @@ elif pos_filter == "FC (Frontcourt)":
 if arama:
     filtered = filtered[filtered["full_name"].str.contains(arama, case=False)]
 
-sorted_table = filtered.sort_values(by="Value (FP/$)", ascending=False)
+sorted_table = filtered.sort_values(by="FP", ascending=False)
 
 view_cols = [
     "full_name", "pos", "team_abbr", "price", "FP", "form",
