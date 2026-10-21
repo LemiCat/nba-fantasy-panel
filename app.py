@@ -4,7 +4,7 @@ import streamlit as st
 
 st.set_page_config(page_title="NBA Fantasy Verim Paneli", layout="wide", page_icon="🏀")
 
-@st.cache_data(show_spinner=True, ttl=900)  # 15 dakikada bir otomatik yeniler
+@st.cache_data(show_spinner=True, ttl=900)
 def fetch_live_fantasy_data():
     url = "https://tr.nbafantasy.nba.com/api/bootstrap-static/"
     res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=15).json()
@@ -12,28 +12,29 @@ def fetch_live_fantasy_data():
     
     player_list = []
     for el in res["elements"]:
-        # Kadro dışı veya listede olmayanları filtrele
         if el.get("status") in ["u"]:
             continue
             
         full_name = f"{el['first_name']} {el['second_name']}"
         cost = float(el.get("now_cost", el.get("cost", 0))) / 10.0
         
-        # Fantezi API istatistikleri
+        # Form ve Toplam Puan API'de 10 katı olarak tutulur, 10'a bölüyoruz
         form_raw = float(el.get("form", 0.0) or 0.0)
         form_val = round(form_raw / 10.0, 1) if form_raw > 50 else round(form_raw, 1)
         
-        total_points = float(el.get("total_points", 0.0) or 0.0)
+        tp_raw = float(el.get("total_points", 0.0) or 0.0)
+        total_points = round(tp_raw / 10.0, 1) if tp_raw > 0 else 0.0
+        
         minutes = float(el.get("minutes", 0.0) or 0.0)
         
-        # Temel kutu istatistikleri (Fantezi API'sinde toplam olarak gelir)
-        pts = float(el.get("points", el.get("goals_scored", 0.0)) or 0.0)
+        # Kutu istatistikleri
+        pts = float(el.get("pts", el.get("points", 0.0)) or 0.0)
         reb = float(el.get("rebounds", 0.0) or 0.0)
         ast = float(el.get("assists", 0.0) or 0.0)
         stl = float(el.get("steals", 0.0) or 0.0)
         blk = float(el.get("blocks", 0.0) or 0.0)
         
-        # Değer ve Verim Hesaplamaları
+        # Doğru FP üzerinden Değer ve Verim Hesaplamaları
         value_ratio = round(total_points / cost, 2) if cost > 0 else 0.0
         fp_per_min = round(total_points / minutes, 2) if minutes > 0 else 0.0
         
