@@ -18,30 +18,25 @@ def fetch_live_fantasy_data():
         full_name = f"{el['first_name']} {el['second_name']}"
         cost = float(el.get("now_cost", el.get("cost", 0))) / 10.0
         
-        # Form ve Toplam Puan
         form_raw = float(el.get("form", 0.0) or 0.0)
         form_val = round(form_raw / 10.0, 1) if form_raw > 50 else round(form_raw, 1)
         
         tp_raw = float(el.get("total_points", 0.0) or 0.0)
         total_points = round(tp_raw / 10.0, 1) if tp_raw > 0 else 0.0
         
-        # Sezonluk Maç Başına Ortalama (PPG / FP Ortalaması)
         ppg_raw = float(el.get("points_per_game", 0.0) or 0.0)
         ppg_val = round(ppg_raw / 10.0, 1) if ppg_raw > 50 else round(ppg_raw, 1)
         
-        # Maç Sayısı (GP)
         gp = int(round(total_points / ppg_val)) if ppg_val > 0 else 0
-        
         minutes = float(el.get("minutes", 0.0) or 0.0)
         
-        # Kutu istatistikleri
-        pts = float(el.get("pts", el.get("points", 0.0)) or 0.0)
+        # Sayı verisi Fantezi API'sinde goals_scored veya points olarak saklanır
+        pts = float(el.get("goals_scored", el.get("pts", el.get("points", 0.0))) or 0.0)
         reb = float(el.get("rebounds", 0.0) or 0.0)
         ast = float(el.get("assists", 0.0) or 0.0)
         stl = float(el.get("steals", 0.0) or 0.0)
         blk = float(el.get("blocks", 0.0) or 0.0)
         
-        # Değer ve Verim Oranları (FP ve PPG bazlı)
         value_ratio = round(total_points / cost, 2) if cost > 0 else 0.0
         fp_per_min = round(total_points / minutes, 2) if minutes > 0 else 0.0
         
@@ -80,6 +75,13 @@ with st.spinner("Canlı fantezi verileri yükleniyor..."):
 # Sol Filtreler
 st.sidebar.header("🎯 Filtreler")
 
+# Özel Kıyaslama Listesi (Multiselect)
+selected_players = st.sidebar.multiselect(
+    "⚖️ Karşılaştırılacak Oyuncuları Seç",
+    options=sorted(df["Oyuncu"].unique()),
+    help="Buradan birden fazla oyuncu seçerek doğrudan alt alta kıyaslayabilirsiniz."
+)
+
 pos_filter = st.sidebar.radio("Mevki", ["Tümü", "BC (Backcourt)", "FC (Frontcourt)"])
 
 min_p = float(df["Fiyat (M$)"].min()) if not df.empty else 5.0
@@ -88,22 +90,24 @@ tavan_maas = st.sidebar.slider("Tavan Maaş Sınırı (M$)", min_value=min_p, ma
 
 min_mac = st.sidebar.slider("Minimum Maç Sayısı (GP)", 0, 82, 0)
 min_dk = st.sidebar.slider("Minimum Süre (Dk)", 0, 50, 0)
-arama = st.sidebar.text_input("Oyuncu İsmi Ara")
+arama = st.sidebar.text_input("Oyuncu İsmi Ara (Filtre)")
 
-# Filtreleri uygula
-filtered = df[
-    (df["Fiyat (M$)"] <= tavan_maas) & 
-    (df["Maç"] >= min_mac) &
-    (df["Dakika"] >= min_dk)
-]
-
-if pos_filter == "BC (Backcourt)":
-    filtered = filtered[filtered["Mevki"] == "BC"]
-elif pos_filter == "FC (Frontcourt)":
-    filtered = filtered[filtered["Mevki"] == "FC"]
-
-if arama:
-    filtered = filtered[filtered["Oyuncu"].str.contains(arama, case=False)]
+# Filtreleme Mantığı
+if selected_players:
+    # Eğer çoklu seçim yapıldıysa doğrudan bu oyuncuları göster
+    filtered = df[df["Oyuncu"].isin(selected_players)]
+else:
+    filtered = df[
+        (df["Fiyat (M$)"] <= tavan_maas) & 
+        (df["Maç"] >= min_mac) &
+        (df["Dakika"] >= min_dk)
+    ]
+    if pos_filter == "BC (Backcourt)":
+        filtered = filtered[filtered["Mevki"] == "BC"]
+    elif pos_filter == "FC (Frontcourt)":
+        filtered = filtered[filtered["Mevki"] == "FC"]
+    if arama:
+        filtered = filtered[filtered["Oyuncu"].str.contains(arama, case=False)]
 
 sorted_table = filtered.sort_values(by="Toplam FP", ascending=False)
 
