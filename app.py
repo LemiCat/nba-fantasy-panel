@@ -3,54 +3,37 @@ import pandas as pd
 import streamlit as st
 
 # 1. Sayfa ve Tema Ayarları
-st.set_page_config(page_title="NBA Fantasy Radar", layout="wide", page_icon="🏀", initial_sidebar_state="expanded")
+st.set_page_config(page_title="NBA Fantasy Radar", layout="wide", page_icon="🏀", initial_sidebar_state="collapsed")
 
-# 2. Özel CSS: Yan Menüyü ve Arayüzü Uygulamaya Dönüştür
+# 2. Özel CSS: Arayüzü Uygulamaya (App) Dönüştür
 st.markdown("""
     <style>
     /* Streamlit varsayılan üst menü (Hamburger) ve alt bilgiyi gizle */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     
+    /* Sol menü açma butonunu tamamen gizle */
+    [data-testid="collapsedControl"] {display: none;}
+    
+    /* Üst boşluğu azalt */
     .block-container {
-        padding-top: 2rem;
+        padding-top: 1.5rem;
         padding-bottom: 0rem;
     }
     
+    /* Metrik kutularını daha şık ve belirgin yap */
     div[data-testid="stMetricValue"] {
-        font-size: 2.2rem !important;
+        font-size: 2rem !important; /* Biraz küçülttük ki sığsın */
         color: #38bdf8 !important;
         font-weight: 800 !important;
     }
     
-    /* --- YAN MENÜ (SIDEBAR) MODERNLEŞTİRMESİ --- */
-    /* Yan menü arka planını ana sayfa ile aynı renk yap */
-    [data-testid="stSidebar"] {
-        background-color: #0b0f19 !important;
-        border-right: 1px solid #1e293b !important;
-    }
-    
-    /* Yan menüdeki başlık ve metinleri daha şık hale getir */
-    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
-        color: #f8fafc !important;
-        font-weight: 600 !important;
-    }
-    
-    /* Kaydırıcı (Slider) çubuklarındaki uyumsuz kırmızıyı siber mavi yap */
-    div.stSlider > div > div > div > div {
-        background-color: #38bdf8 !important;
-    }
-    div.stSlider > div > div > div > div > div {
-        background-color: #0284c7 !important;
-        border-color: #0284c7 !important;
-        box-shadow: 0 0 5px rgba(56, 189, 248, 0.5) !important;
-    }
-    
-    /* Açılır-Kapanır Menü (Expander) arka planını belirginleştir */
-    [data-testid="stExpander"] {
-        background-color: #0f172a !important;
-        border: 1px solid #1e293b !important;
-        border-radius: 8px !important;
+    /* Sağ taraftaki filtre panelinin arka planı */
+    .filter-panel {
+        background-color: #0f172a;
+        padding: 15px;
+        border-radius: 10px;
+        border: 1px solid #1e293b;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -113,30 +96,49 @@ except Exception as e:
     st.error(f"Veri çekme hatası: {e}")
     st.stop()
 
-# 4. SOL MENÜ (Sidebar)
-st.sidebar.header("🎯 Radar Filtreleri")
+# ==========================================
+# ANA EKRAN DÜZENİ: İki Ana Sütun (Sol %65, Sağ %35)
+# ==========================================
+main_col_left, main_col_right = st.columns([1.8, 1])
 
-selected_players = st.sidebar.multiselect(
-    "🔍 Oyuncu Ara & Karşılaştır",
-    options=sorted(df["Oyuncu"].unique()),
-    help="İsim yazarak arayın. Birden fazla seçerek kıyaslayın."
-)
+# SOL TARAF: Metrik Kartları
+with main_col_left:
+    st.write("") # Biraz boşluk
+    metric_col1, metric_col2, metric_col3 = st.columns(3)
+    
+    # Metrikleri oluşturacağımız yeri ayırıyoruz, filtrelemeden sonra içini dolduracağız
+    metric_placeholder1 = metric_col1.empty()
+    metric_placeholder2 = metric_col2.empty()
+    metric_placeholder3 = metric_col3.empty()
 
-# Radyo butonu yerine Dropdown (Açılır Menü) kullanıldı
-pos_filter = st.sidebar.selectbox("🏀 Mevki", ["Tümü", "BC (Backcourt)", "FC (Frontcourt)"])
+# SAĞ TARAF: Filtre Paneli
+with main_col_right:
+    st.markdown('<div class="filter-panel">', unsafe_allow_html=True)
+    st.subheader("🎯 Radar Filtreleri")
+    
+    selected_players = st.multiselect(
+        "🔍 Oyuncu Ara & Karşılaştır",
+        options=sorted(df["Oyuncu"].unique()),
+        help="İsim yazarak arayın. Birden fazla seçerek kıyaslayın."
+    )
+    
+    pos_filter = st.selectbox("🏀 Mevki", ["Tümü", "BC (Backcourt)", "FC (Frontcourt)"])
+    
+    with st.expander("⚙️ Detaylı İstatistik Filtreleri", expanded=False):
+        min_p = float(df["Fiyat (M$)"].min()) if not df.empty else 5.0
+        max_p = float(df["Fiyat (M$)"].max()) if not df.empty else 23.0
+        tavan_maas = st.slider("💰 Maksimum Fiyat (M$)", min_value=min_p, max_value=max_p, value=max_p, step=0.5)
+    
+        min_mac = st.slider("🗓️ Minimum Maç (GP)", 0, 82, 0)
+        min_mpg = st.slider("⏱️ Min Süre (Dk/Maç)", 0, 48, 0)
+        
+    st.markdown('</div>', unsafe_allow_html=True)
 
-st.sidebar.markdown("---")
+st.markdown("---") # Metrikler ve Tablo arasına bir çizgi
 
-# Kaydırıcılar kalabalık yapmasın diye Expander (Açılır/Kapanır Kutu) içine alındı
-with st.sidebar.expander("⚙️ Detaylı İstatistik Filtreleri", expanded=True):
-    min_p = float(df["Fiyat (M$)"].min()) if not df.empty else 5.0
-    max_p = float(df["Fiyat (M$)"].max()) if not df.empty else 23.0
-    tavan_maas = st.slider("💰 Maksimum Fiyat (M$)", min_value=min_p, max_value=max_p, value=max_p, step=0.5)
-
-    min_mac = st.slider("🗓️ Minimum Maç (GP)", 0, 82, 0)
-    min_mpg = st.slider("⏱️ Min Süre (Dk/Maç)", 0, 48, 0)
-
-# 5. FİLTRELEME MANTIĞI
+# ==========================================
+# FİLTRELEME MANTIĞI
+# ==========================================
 if selected_players:
     filtered = df[df["Oyuncu"].isin(selected_players)]
 else:
@@ -152,26 +154,30 @@ else:
 
 sorted_table = filtered.sort_values(by="Value", ascending=False)
 
-# 6. DİNAMİK ÜST METRİKLER
-col1, col2, col3 = st.columns(3)
-col1.metric("Filtrelenen Oyuncu", len(sorted_table))
+# ==========================================
+# METRİKLERİ DOLDURMA (Filtreleme sonrası)
+# ==========================================
+metric_placeholder1.metric("Filtrelenen Oyuncu", len(sorted_table))
 
 if not sorted_table.empty:
     best_value_player = sorted_table.iloc[0]["Oyuncu"]
     best_value_score = sorted_table.iloc[0]["Value"]
-    col2.metric("🏆 En Yüksek Value", f"{best_value_player}", f"{best_value_score:.2f} FP/$")
+    metric_placeholder2.metric("🏆 En Yüksek Value", f"{best_value_player}", f"{best_value_score:.2f} FP/$")
     
     best_form_row = sorted_table.loc[sorted_table['Form'].idxmax()]
-    col3.metric("🔥 En Formda (Hot Streak)", f"{best_form_row['Oyuncu']}", f"{best_form_row['Form']:.1f} Form")
+    metric_placeholder3.metric("🔥 En Formda (Hot Streak)", f"{best_form_row['Oyuncu']}", f"{best_form_row['Form']:.1f} Form")
 else:
-    col2.metric("🏆 En Yüksek Value", "-", "-")
-    col3.metric("🔥 En Formda (Hot Streak)", "-", "-")
+    metric_placeholder2.metric("🏆 En Yüksek Value", "-", "-")
+    metric_placeholder3.metric("🔥 En Formda (Hot Streak)", "-", "-")
 
-# 7. ANA TABLO
+# ==========================================
+# ANA TABLO
+# ==========================================
 st.dataframe(
     sorted_table,
     use_container_width=True,
     hide_index=True,
+    height=600, # Tablonun yüksekliğini biraz artırdık
     column_config={
         "Fiyat (M$)": st.column_config.NumberColumn(format="%.1f M$"),
         "Toplam FP": st.column_config.NumberColumn(format="%.1f"),
