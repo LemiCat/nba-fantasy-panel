@@ -8,10 +8,9 @@ st.set_page_config(page_title="NBA Fantasy Radar", layout="wide", page_icon="�
 # 2. Özel CSS: Arayüzü Uygulamaya (App) Dönüştür
 st.markdown("""
     <style>
-    /* Streamlit varsayılan üst menü ve alt bilgiyi gizle */
+    /* Sağ üstteki gereksiz Hamburger menüyü ve alt bilgiyi gizle. Header kalacak (yan menü oku için) */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    header {visibility: hidden;}
     
     /* Üst boşluğu azalt */
     .block-container {
@@ -57,7 +56,6 @@ def fetch_live_fantasy_data():
         value_ratio = round(total_points / cost, 2) if cost > 0 else 0.0
         fp_per_min = round(total_points / minutes, 2) if minutes > 0 else 0.0
         
-        # Sadece fantezi bütçe ve verim odaklı veriler tutuldu
         player_list.append({
             "Oyuncu": full_name,
             "Mevki": "BC" if el["element_type"] == 1 else "FC",
@@ -85,10 +83,9 @@ except Exception as e:
     st.error(f"Veri çekme hatası: {e}")
     st.stop()
 
-# 4. SOL MENÜ (Sidebar) - Temizlenmiş ve Birleştirilmiş
+# 4. SOL MENÜ (Sidebar)
 st.sidebar.header("🎯 Radar Filtreleri")
 
-# Arama ve Karşılaştırma Tek Kutuda Birleşti
 selected_players = st.sidebar.multiselect(
     "🔍 Oyuncu Ara & Karşılaştır",
     options=sorted(df["Oyuncu"].unique()),
@@ -118,7 +115,6 @@ else:
     elif pos_filter == "FC (Frontcourt)":
         filtered = filtered[filtered["Mevki"] == "FC"]
 
-# Tabloyu Value'ye göre sırala (Değer avcılığı ön planda)
 sorted_table = filtered.sort_values(by="Value (FP/$)", ascending=False)
 
 # 6. DİNAMİK ÜST METRİKLER
@@ -136,7 +132,7 @@ else:
     col2.metric("🏆 En Yüksek Value", "-", "-")
     col3.metric("Ortalama Maliyet", "-")
 
-# 7. ANA TABLO - GÖRSELLEŞTİRİLMİŞ Barlar (ProgressColumn)
+# 7. ANA TABLO - GÖRSELLEŞTİRİLMİŞ Barlar
 st.dataframe(
     sorted_table,
     use_container_width=True,
@@ -147,7 +143,6 @@ st.dataframe(
         "Fiyat (M$)": st.column_config.NumberColumn(format="%.1f M$"),
         "Toplam FP": st.column_config.NumberColumn(format="%.1f"),
         "FP Ort. (PPG)": st.column_config.NumberColumn(format="%.1f"),
-        # Görsel Barlar (Maksimum değerler NBA standartlarına göre ayarlandı)
         "Form": st.column_config.ProgressColumn(
             "🔥 Form", format="%.1f", min_value=0, max_value=80
         ),
