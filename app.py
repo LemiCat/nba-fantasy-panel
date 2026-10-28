@@ -5,25 +5,70 @@ import streamlit as st
 # 1. Sayfa ve Tema Ayarları
 st.set_page_config(page_title="NBA Fantasy Radar", layout="wide", page_icon="🏀", initial_sidebar_state="expanded")
 
-# 2. Özel CSS: Arayüzü Uygulamaya (App) Dönüştür
+# 2. Özel CSS
 st.markdown("""
     <style>
-    /* Sağ üstteki gereksiz Hamburger menüyü ve alt bilgiyi gizle. Header kalacak (yan menü oku için) */
+    /* Streamlit varsayılan menüleri gizle */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     
-    /* Üst boşluğu azalt */
     .block-container {
         padding-top: 2rem;
         padding-bottom: 0rem;
     }
     
-    /* Metrik kutularını daha şık ve belirgin yap */
     div[data-testid="stMetricValue"] {
         font-size: 2.2rem !important;
         color: #38bdf8 !important;
         font-weight: 800 !important;
     }
+    
+    /* Özel HTML Tablo Stilleri (Scroll'u engeller, barları inceltir) */
+    .custom-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        font-family: system-ui, -apple-system, sans-serif;
+        color: #f8fafc;
+        margin-top: 15px;
+    }
+    .custom-table th {
+        background-color: #0f172a;
+        color: #94a3b8;
+        padding: 10px 8px;
+        text-align: left;
+        border-bottom: 2px solid #1e293b;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .custom-table td {
+        padding: 8px 8px;
+        border-bottom: 1px solid #1e293b;
+        vertical-align: middle;
+    }
+    .custom-table tr:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+    
+    /* İnce Bar Grafikleri (Progress Bar) */
+    .bar-container {
+        width: 80px; /* Genişliği kısıtladık */
+        height: 6px; /* İncelttik */
+        background-color: #1e293b;
+        border-radius: 3px;
+        display: inline-block;
+        margin-right: 8px;
+        vertical-align: middle;
+        overflow: hidden;
+    }
+    .bar-fill {
+        height: 100%;
+        border-radius: 3px;
+    }
+    .fill-form { background: linear-gradient(90deg, #ea580c, #f97316); }
+    .fill-value { background: linear-gradient(90deg, #0284c7, #38bdf8); }
+    .fill-fpmin { background: linear-gradient(90deg, #059669, #10b981); }
+    .val-text { display: inline-block; width: 35px; text-align: right; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -60,20 +105,19 @@ def fetch_live_fantasy_data():
             "Oyuncu": full_name,
             "Mevki": "BC" if el["element_type"] == 1 else "FC",
             "Takım": teams.get(el["team"], "NBA"),
-            "Fiyat (M$)": cost,
+            "Fiyat": cost,
             "Toplam FP": total_points,
-            "FP Ort. (PPG)": ppg_val,
+            "FP Ort": ppg_val,
             "Form": form_val,
-            "Value (FP/$)": value_ratio,
+            "Value": value_ratio,
             "FP/Min": fp_per_min,
             "Maç": gp,
-            "Dakika": minutes
+            "Dk": minutes
         })
         
     df = pd.DataFrame(player_list)
     return df
 
-# 3. Başlık ve Veri Çekme
 st.title("🏀 NBA Fantasy Radar & Verim Terminali")
 st.caption("Canlı Sistem Aktif: Veriler arka planda otomatik güncellenir.")
 
@@ -83,76 +127,74 @@ except Exception as e:
     st.error(f"Veri çekme hatası: {e}")
     st.stop()
 
-# 4. SOL MENÜ (Sidebar)
+# Sol Filtreler
 st.sidebar.header("🎯 Radar Filtreleri")
+selected_players = st.sidebar.multiselect("🔍 Oyuncu Ara & Karşılaştır", options=sorted(df["Oyuncu"].unique()))
+pos_filter = st.sidebar.radio("Mevki", ["Tümü", "BC", "FC"], horizontal=True)
 
-selected_players = st.sidebar.multiselect(
-    "🔍 Oyuncu Ara & Karşılaştır",
-    options=sorted(df["Oyuncu"].unique()),
-    help="İsim yazarak arayın. Birden fazla seçerek kıyaslayın. Boş bırakırsanız filtrelere uygun tüm liste görünür."
-)
+min_p = float(df["Fiyat"].min()) if not df.empty else 5.0
+max_p = float(df["Fiyat"].max()) if not df.empty else 23.0
+tavan_maas = st.sidebar.slider("💰 Max Fiyat (M$)", min_value=min_p, max_value=max_p, value=max_p, step=0.5)
 
-pos_filter = st.sidebar.radio("Mevki", ["Tümü", "BC (Backcourt)", "FC (Frontcourt)"], horizontal=True)
+min_mac = st.sidebar.slider("🗓️ Min Maç", 0, 82, 0)
+min_dk = st.sidebar.slider("⏱️ Min Süre (Dk)", 0, 150, 0)
 
-min_p = float(df["Fiyat (M$)"].min()) if not df.empty else 5.0
-max_p = float(df["Fiyat (M$)"].max()) if not df.empty else 23.0
-tavan_maas = st.sidebar.slider("💰 Maksimum Fiyat (M$)", min_value=min_p, max_value=max_p, value=max_p, step=0.5)
-
-min_mac = st.sidebar.slider("🗓️ Minimum Maç (GP)", 0, 82, 0)
-min_dk = st.sidebar.slider("⏱️ Minimum Süre (Dk)", 0, 150, 0)
-
-# 5. FİLTRELEME MANTIĞI
 if selected_players:
     filtered = df[df["Oyuncu"].isin(selected_players)]
 else:
-    filtered = df[
-        (df["Fiyat (M$)"] <= tavan_maas) & 
-        (df["Maç"] >= min_mac) &
-        (df["Dakika"] >= min_dk)
-    ]
-    if pos_filter == "BC (Backcourt)":
-        filtered = filtered[filtered["Mevki"] == "BC"]
-    elif pos_filter == "FC (Frontcourt)":
-        filtered = filtered[filtered["Mevki"] == "FC"]
+    filtered = df[(df["Fiyat"] <= tavan_maas) & (df["Maç"] >= min_mac) & (df["Dk"] >= min_dk)]
+    if pos_filter == "BC": filtered = filtered[filtered["Mevki"] == "BC"]
+    elif pos_filter == "FC": filtered = filtered[filtered["Mevki"] == "FC"]
 
-sorted_table = filtered.sort_values(by="Value (FP/$)", ascending=False)
+sorted_table = filtered.sort_values(by="Value", ascending=False)
 
-# 6. DİNAMİK ÜST METRİKLER
+# Dinamik Üst Metrikler
 col1, col2, col3 = st.columns(3)
 col1.metric("Filtrelenen Oyuncu", len(sorted_table))
 
 if not sorted_table.empty:
     best_value_player = sorted_table.iloc[0]["Oyuncu"]
-    best_value_score = sorted_table.iloc[0]["Value (FP/$)"]
-    col2.metric("🏆 En Yüksek Value", f"{best_value_player}", f"{best_value_score} FP/$")
-    
-    avg_price = sorted_table["Fiyat (M$)"].mean()
-    col3.metric("Ortalama Maliyet", f"{avg_price:.1f} M$")
+    best_value_score = sorted_table.iloc[0]["Value"]
+    col2.metric("🏆 En Yüksek Value", f"{best_value_player}", f"{best_value_score:.2f} FP/$")
+    avg_price = sorted_table["Fiyat"].mean()
+    col3.metric("Ortalama Maliyet (Liste)", f"{avg_price:.1f} M$")
 else:
     col2.metric("🏆 En Yüksek Value", "-", "-")
     col3.metric("Ortalama Maliyet", "-")
 
-# 7. ANA TABLO - GÖRSELLEŞTİRİLMİŞ Barlar
-st.dataframe(
-    sorted_table,
-    use_container_width=True,
-    hide_index=True,
-    column_config={
-        "Oyuncu": st.column_config.TextColumn(width="medium"),
-        "Takım": st.column_config.TextColumn(width="small"),
-        "Fiyat (M$)": st.column_config.NumberColumn(format="%.1f M$"),
-        "Toplam FP": st.column_config.NumberColumn(format="%.1f"),
-        "FP Ort. (PPG)": st.column_config.NumberColumn(format="%.1f"),
-        "Form": st.column_config.ProgressColumn(
-            "🔥 Form", format="%.1f", min_value=0, max_value=80
-        ),
-        "Value (FP/$)": st.column_config.ProgressColumn(
-            "💎 Value (FP/$)", format="%.2f", min_value=0, max_value=30
-        ),
-        "FP/Min": st.column_config.ProgressColumn(
-            "⚡ FP/Min", format="%.2f", min_value=0, max_value=2.0
-        ),
-        "Maç": st.column_config.NumberColumn(format="%d"),
-        "Dakika": st.column_config.NumberColumn(format="%.1f")
-    }
-)
+# Özel HTML Tablo Oluşturma (Scroll olmadan ve ince barlarla)
+html_table = "<table class='custom-table'><thead><tr>"
+html_table += "<th>Oyuncu</th><th>Mevki</th><th>Takım</th><th>Fiyat</th><th>Top FP</th><th>FP Ort</th>"
+html_table += "<th>🔥 Form</th><th>💎 Value</th><th>⚡ FP/Min</th><th>Maç</th><th>Dk</th>"
+html_table += "</tr></thead><tbody>"
+
+for _, row in sorted_table.iterrows():
+    # Progress Bar Yüzde Hesaplamaları (Maksimum referans değerler)
+    pct_form = min((row['Form'] / 80) * 100, 100)
+    pct_value = min((row['Value'] / 30) * 100, 100)
+    pct_fpmin = min((row['FP/Min'] / 2.0) * 100, 100)
+    
+    # HTML Satır
+    html_table += f"<tr>"
+    html_table += f"<td><strong>{row['Oyuncu']}</strong></td>"
+    html_table += f"<td>{row['Mevki']}</td>"
+    html_table += f"<td>{row['Takım']}</td>"
+    html_table += f"<td>{row['Fiyat']:.1f} M$</td>"
+    html_table += f"<td>{row['Toplam FP']:.1f}</td>"
+    html_table += f"<td>{row['FP Ort']:.1f}</td>"
+    
+    # Form Bar
+    html_table += f"<td><div class='bar-container'><div class='bar-fill fill-form' style='width:{pct_form}%'></div></div><span class='val-text'>{row['Form']:.1f}</span></td>"
+    # Value Bar
+    html_table += f"<td><div class='bar-container'><div class='bar-fill fill-value' style='width:{pct_value}%'></div></div><span class='val-text'>{row['Value']:.2f}</span></td>"
+    # FP/Min Bar
+    html_table += f"<td><div class='bar-container'><div class='bar-fill fill-fpmin' style='width:{pct_fpmin}%'></div></div><span class='val-text'>{row['FP/Min']:.2f}</span></td>"
+    
+    html_table += f"<td>{int(row['Maç'])}</td>"
+    html_table += f"<td>{row['Dk']:.1f}</td>"
+    html_table += "</tr>"
+
+html_table += "</tbody></table>"
+
+# Tabloyu Streamlit'e bas
+st.markdown(html_table, unsafe_allow_html=True)
