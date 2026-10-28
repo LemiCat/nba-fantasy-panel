@@ -16,9 +16,8 @@ st.markdown("""
     
     /* Üstten ve alttan tüm gereksiz boşlukları tamamen sil */
     .block-container {
-        padding-top: 0.5rem !important;
+        padding-top: 1.5rem !important;
         padding-bottom: 0rem !important;
-        margin-top: -20px;
     }
     
     /* Ana başlık boşluğunu sıkıştır */
@@ -29,18 +28,9 @@ st.markdown("""
     
     /* Metrik kutularının hizasını düzelt */
     div[data-testid="stMetricValue"] {
-        font-size: 1.8rem !important;
+        font-size: 2rem !important;
         color: #38bdf8 !important;
         font-weight: 800 !important;
-    }
-    
-    /* Sağ filtre paneli kompakt CSS */
-    .filter-panel {
-        background-color: #0f172a;
-        padding: 10px 15px;
-        border-radius: 8px;
-        border: 1px solid #1e293b;
-        margin-top: 10px; /* Metriklerle hizalamak için hafif yukarı çekiyoruz */
     }
     
     /* Expander (Açılır Menü) boşluklarını azalt */
@@ -97,7 +87,6 @@ def fetch_live_fantasy_data():
     df = pd.DataFrame(player_list)
     return df
 
-# 3. Başlık ve Veri Çekme
 st.title("🏀 NBA Fantasy Radar & Verim Terminali")
 st.caption("Canlı Sistem Aktif: Veriler otomatik güncellenir. Sıralamak için sütun başlıklarına tıklayın.")
 
@@ -112,27 +101,25 @@ except Exception as e:
 # ==========================================
 main_col_left, main_col_right = st.columns([1.8, 1])
 
-# SOL TARAF: Metrik Kartları (Kompakt Hizalama)
+# SOL TARAF: Metrik Kartları
 with main_col_left:
-    st.write("") # Küçük bir nefes payı
+    st.write("") # Dikey hizalamayı sağ tarafla eşitlemek için ufak bir boşluk
     metric_col1, metric_col2, metric_col3 = st.columns(3)
     metric_placeholder1 = metric_col1.empty()
     metric_placeholder2 = metric_col2.empty()
     metric_placeholder3 = metric_col3.empty()
 
-# SAĞ TARAF: Filtre Paneli (Boşluksuz ve Yan Yana Düzen)
+# SAĞ TARAF: Filtre Paneli (Boşluksuz ve Kutudan Bağımsız Düzen)
 with main_col_right:
-    st.markdown('<div class="filter-panel">', unsafe_allow_html=True)
-    st.markdown("<h5 style='margin-bottom:0px; margin-top:0px;'>🎯 Radar Filtreleri</h5>", unsafe_allow_html=True)
+    st.markdown("<h5 style='margin-bottom:10px; margin-top:5px; color:#f8fafc;'>🎯 Radar Filtreleri</h5>", unsafe_allow_html=True)
     
-    # Arama ve Mevki kutularını yan yana koyarak dikey alanı yarı yarıya kısalttık
     filt_col1, filt_col2 = st.columns([1.5, 1])
     with filt_col1:
         selected_players = st.multiselect(
             "🔍 Oyuncu",
             options=sorted(df["Oyuncu"].unique()),
             help="İsim yazıp arayın.",
-            label_visibility="collapsed" # Etiketi gizle, yer kazan
+            label_visibility="collapsed"
         )
     with filt_col2:
         pos_filter = st.selectbox("🏀 Mevki", ["Tümü", "BC", "FC"], label_visibility="collapsed")
@@ -142,14 +129,11 @@ with main_col_right:
         max_p = float(df["Fiyat (M$)"].max()) if not df.empty else 23.0
         tavan_maas = st.slider("Max Fiyat (M$)", min_value=min_p, max_value=max_p, value=max_p, step=0.5)
         
-        # Maç ve Süre kaydırıcılarını yan yana koyduk
         sld_col1, sld_col2 = st.columns(2)
         with sld_col1:
             min_mac = st.slider("Min Maç (GP)", 0, 82, 0)
         with sld_col2:
             min_mpg = st.slider("Min Dk/Maç", 0, 48, 0)
-        
-    st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
 # FİLTRELEME MANTIĞI
@@ -188,7 +172,7 @@ else:
 # ==========================================
 # ANA TABLO
 # ==========================================
-st.markdown("<br>", unsafe_allow_html=True) # Tablo ile metrikler arası ince çizgi efekti
+st.markdown("<br>", unsafe_allow_html=True)
 st.dataframe(
     sorted_table,
     use_container_width=True,
