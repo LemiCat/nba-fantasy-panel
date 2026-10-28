@@ -5,24 +5,52 @@ import streamlit as st
 # 1. Sayfa ve Tema Ayarları
 st.set_page_config(page_title="NBA Fantasy Radar", layout="wide", page_icon="🏀", initial_sidebar_state="expanded")
 
-# 2. Özel CSS: Arayüzü Uygulamaya (App) Dönüştür
+# 2. Özel CSS: Yan Menüyü ve Arayüzü Uygulamaya Dönüştür
 st.markdown("""
     <style>
     /* Streamlit varsayılan üst menü (Hamburger) ve alt bilgiyi gizle */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     
-    /* Üst boşluğu azalt */
     .block-container {
         padding-top: 2rem;
         padding-bottom: 0rem;
     }
     
-    /* Metrik kutularını daha şık ve belirgin yap */
     div[data-testid="stMetricValue"] {
         font-size: 2.2rem !important;
         color: #38bdf8 !important;
         font-weight: 800 !important;
+    }
+    
+    /* --- YAN MENÜ (SIDEBAR) MODERNLEŞTİRMESİ --- */
+    /* Yan menü arka planını ana sayfa ile aynı renk yap */
+    [data-testid="stSidebar"] {
+        background-color: #0b0f19 !important;
+        border-right: 1px solid #1e293b !important;
+    }
+    
+    /* Yan menüdeki başlık ve metinleri daha şık hale getir */
+    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
+        color: #f8fafc !important;
+        font-weight: 600 !important;
+    }
+    
+    /* Kaydırıcı (Slider) çubuklarındaki uyumsuz kırmızıyı siber mavi yap */
+    div.stSlider > div > div > div > div {
+        background-color: #38bdf8 !important;
+    }
+    div.stSlider > div > div > div > div > div {
+        background-color: #0284c7 !important;
+        border-color: #0284c7 !important;
+        box-shadow: 0 0 5px rgba(56, 189, 248, 0.5) !important;
+    }
+    
+    /* Açılır-Kapanır Menü (Expander) arka planını belirginleştir */
+    [data-testid="stExpander"] {
+        background-color: #0f172a !important;
+        border: 1px solid #1e293b !important;
+        border-radius: 8px !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -52,7 +80,6 @@ def fetch_live_fantasy_data():
         
         gp = int(round(total_points / ppg_val)) if ppg_val > 0 else 0
         
-        # --- TOPLAM DAKİKA YERİNE MAÇ BAŞINA DAKİKA (MPG) HESABI ---
         total_minutes = float(el.get("minutes", 0.0) or 0.0)
         mpg = round(total_minutes / gp, 1) if gp > 0 else 0.0
         
@@ -95,15 +122,19 @@ selected_players = st.sidebar.multiselect(
     help="İsim yazarak arayın. Birden fazla seçerek kıyaslayın."
 )
 
-pos_filter = st.sidebar.radio("Mevki", ["Tümü", "BC (Backcourt)", "FC (Frontcourt)"], horizontal=True)
+# Radyo butonu yerine Dropdown (Açılır Menü) kullanıldı
+pos_filter = st.sidebar.selectbox("🏀 Mevki", ["Tümü", "BC (Backcourt)", "FC (Frontcourt)"])
 
-min_p = float(df["Fiyat (M$)"].min()) if not df.empty else 5.0
-max_p = float(df["Fiyat (M$)"].max()) if not df.empty else 23.0
-tavan_maas = st.sidebar.slider("💰 Maksimum Fiyat (M$)", min_value=min_p, max_value=max_p, value=max_p, step=0.5)
+st.sidebar.markdown("---")
 
-min_mac = st.sidebar.slider("🗓️ Minimum Maç (GP)", 0, 82, 0)
-# --- 0-48 DAKİKA ARASI YENİ MAÇ BAŞI SÜRE FİLTRESİ ---
-min_mpg = st.sidebar.slider("⏱️ Min Süre (Dk/Maç)", 0, 48, 0)
+# Kaydırıcılar kalabalık yapmasın diye Expander (Açılır/Kapanır Kutu) içine alındı
+with st.sidebar.expander("⚙️ Detaylı İstatistik Filtreleri", expanded=True):
+    min_p = float(df["Fiyat (M$)"].min()) if not df.empty else 5.0
+    max_p = float(df["Fiyat (M$)"].max()) if not df.empty else 23.0
+    tavan_maas = st.slider("💰 Maksimum Fiyat (M$)", min_value=min_p, max_value=max_p, value=max_p, step=0.5)
+
+    min_mac = st.slider("🗓️ Minimum Maç (GP)", 0, 82, 0)
+    min_mpg = st.slider("⏱️ Min Süre (Dk/Maç)", 0, 48, 0)
 
 # 5. FİLTRELEME MANTIĞI
 if selected_players:
@@ -130,14 +161,13 @@ if not sorted_table.empty:
     best_value_score = sorted_table.iloc[0]["Value"]
     col2.metric("🏆 En Yüksek Value", f"{best_value_player}", f"{best_value_score:.2f} FP/$")
     
-    # Ortalama maliyet yerine, listedeki en formda oyuncuyu göster
     best_form_row = sorted_table.loc[sorted_table['Form'].idxmax()]
     col3.metric("🔥 En Formda (Hot Streak)", f"{best_form_row['Oyuncu']}", f"{best_form_row['Form']:.1f} Form")
 else:
     col2.metric("🏆 En Yüksek Value", "-", "-")
     col3.metric("🔥 En Formda (Hot Streak)", "-", "-")
 
-# 7. ANA TABLO - STANDART STREAMLIT DATAFRAME
+# 7. ANA TABLO
 st.dataframe(
     sorted_table,
     use_container_width=True,
