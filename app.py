@@ -8,7 +8,6 @@ st.set_page_config(page_title="NBA Fantasy Radar", layout="wide", page_icon="�
 # 2. Özel CSS
 st.markdown("""
     <style>
-    /* Streamlit varsayılan menüleri gizle */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     
@@ -23,7 +22,7 @@ st.markdown("""
         font-weight: 800 !important;
     }
     
-    /* Özel HTML Tablo Stilleri (Scroll'u engeller, barları inceltir) */
+    /* Özel HTML Tablo Stilleri */
     .custom-table {
         width: 100%;
         border-collapse: collapse;
@@ -50,10 +49,10 @@ st.markdown("""
         background-color: rgba(255, 255, 255, 0.05);
     }
     
-    /* İnce Bar Grafikleri (Progress Bar) */
+    /* İnce Bar Grafikleri */
     .bar-container {
-        width: 80px; /* Genişliği kısıtladık */
-        height: 6px; /* İncelttik */
+        width: 80px; 
+        height: 6px; 
         background-color: #1e293b;
         border-radius: 3px;
         display: inline-block;
@@ -127,8 +126,11 @@ except Exception as e:
     st.error(f"Veri çekme hatası: {e}")
     st.stop()
 
-# Sol Filtreler
+# ==========================================
+# SOL MENÜ (Filtreler ve Sıralama)
+# ==========================================
 st.sidebar.header("🎯 Radar Filtreleri")
+
 selected_players = st.sidebar.multiselect("🔍 Oyuncu Ara & Karşılaştır", options=sorted(df["Oyuncu"].unique()))
 pos_filter = st.sidebar.radio("Mevki", ["Tümü", "BC", "FC"], horizontal=True)
 
@@ -139,6 +141,19 @@ tavan_maas = st.sidebar.slider("💰 Max Fiyat (M$)", min_value=min_p, max_value
 min_mac = st.sidebar.slider("🗓️ Min Maç", 0, 82, 0)
 min_dk = st.sidebar.slider("⏱️ Min Süre (Dk)", 0, 150, 0)
 
+# --- YENİ: SIRALAMA MOTORU ---
+st.sidebar.markdown("---")
+st.sidebar.header("🔀 Sıralama Ayarları")
+sort_col = st.sidebar.selectbox(
+    "Sıralama Ölçütü", 
+    ["Value", "Toplam FP", "FP Ort", "Fiyat", "Form", "FP/Min", "Dk"]
+)
+sort_order = st.sidebar.radio("Yön", ["Yüksekten Düşüğe (Azalan)", "Düşükten Yükseğe (Artan)"])
+is_ascending = True if sort_order == "Düşükten Yükseğe (Artan)" else False
+
+# ==========================================
+# FİLTRELEME VE SIRALAMA UYGULAMASI
+# ==========================================
 if selected_players:
     filtered = df[df["Oyuncu"].isin(selected_players)]
 else:
@@ -146,35 +161,36 @@ else:
     if pos_filter == "BC": filtered = filtered[filtered["Mevki"] == "BC"]
     elif pos_filter == "FC": filtered = filtered[filtered["Mevki"] == "FC"]
 
-sorted_table = filtered.sort_values(by="Value", ascending=False)
+# Tabloyu seçilen kritere göre dinamik sırala
+sorted_table = filtered.sort_values(by=sort_col, ascending=is_ascending)
 
 # Dinamik Üst Metrikler
 col1, col2, col3 = st.columns(3)
 col1.metric("Filtrelenen Oyuncu", len(sorted_table))
 
 if not sorted_table.empty:
-    best_value_player = sorted_table.iloc[0]["Oyuncu"]
-    best_value_score = sorted_table.iloc[0]["Value"]
-    col2.metric("🏆 En Yüksek Value", f"{best_value_player}", f"{best_value_score:.2f} FP/$")
+    # Value metriği için her zaman en yüksek değere sahip oyuncuyu bul
+    best_value_row = filtered.loc[filtered["Value"].idxmax()]
+    col2.metric("🏆 En Yüksek Value", f"{best_value_row['Oyuncu']}", f"{best_value_row['Value']:.2f} FP/$")
     avg_price = sorted_table["Fiyat"].mean()
     col3.metric("Ortalama Maliyet (Liste)", f"{avg_price:.1f} M$")
 else:
     col2.metric("🏆 En Yüksek Value", "-", "-")
     col3.metric("Ortalama Maliyet", "-")
 
-# Özel HTML Tablo Oluşturma (Scroll olmadan ve ince barlarla)
+# ==========================================
+# HTML TABLO RENDER 
+# ==========================================
 html_table = "<table class='custom-table'><thead><tr>"
 html_table += "<th>Oyuncu</th><th>Mevki</th><th>Takım</th><th>Fiyat</th><th>Top FP</th><th>FP Ort</th>"
 html_table += "<th>🔥 Form</th><th>💎 Value</th><th>⚡ FP/Min</th><th>Maç</th><th>Dk</th>"
 html_table += "</tr></thead><tbody>"
 
 for _, row in sorted_table.iterrows():
-    # Progress Bar Yüzde Hesaplamaları (Maksimum referans değerler)
     pct_form = min((row['Form'] / 80) * 100, 100)
     pct_value = min((row['Value'] / 30) * 100, 100)
     pct_fpmin = min((row['FP/Min'] / 2.0) * 100, 100)
     
-    # HTML Satır
     html_table += f"<tr>"
     html_table += f"<td><strong>{row['Oyuncu']}</strong></td>"
     html_table += f"<td>{row['Mevki']}</td>"
@@ -183,11 +199,8 @@ for _, row in sorted_table.iterrows():
     html_table += f"<td>{row['Toplam FP']:.1f}</td>"
     html_table += f"<td>{row['FP Ort']:.1f}</td>"
     
-    # Form Bar
     html_table += f"<td><div class='bar-container'><div class='bar-fill fill-form' style='width:{pct_form}%'></div></div><span class='val-text'>{row['Form']:.1f}</span></td>"
-    # Value Bar
     html_table += f"<td><div class='bar-container'><div class='bar-fill fill-value' style='width:{pct_value}%'></div></div><span class='val-text'>{row['Value']:.2f}</span></td>"
-    # FP/Min Bar
     html_table += f"<td><div class='bar-container'><div class='bar-fill fill-fpmin' style='width:{pct_fpmin}%'></div></div><span class='val-text'>{row['FP/Min']:.2f}</span></td>"
     
     html_table += f"<td>{int(row['Maç'])}</td>"
@@ -196,5 +209,4 @@ for _, row in sorted_table.iterrows():
 
 html_table += "</tbody></table>"
 
-# Tabloyu Streamlit'e bas
 st.markdown(html_table, unsafe_allow_html=True)
