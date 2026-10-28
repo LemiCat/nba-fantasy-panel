@@ -5,7 +5,7 @@ import streamlit as st
 # 1. Sayfa ve Tema Ayarları
 st.set_page_config(page_title="NBA Fantasy Radar", layout="wide", page_icon="🏀", initial_sidebar_state="collapsed")
 
-# 2. Özel CSS: Arayüzü Uygulamaya (App) Dönüştür ve Sıkıştır
+# 2. Özel CSS: Arayüzü Uygulamaya (App) Dönüştür ve Animasyonlar Ekle
 st.markdown("""
     <style>
     /* Streamlit varsayılan üst menü ve alt bilgiyi gizle */
@@ -14,33 +14,73 @@ st.markdown("""
     header {visibility: hidden;}
     [data-testid="collapsedControl"] {display: none;}
     
-    /* Üstten ve alttan tüm gereksiz boşlukları tamamen sil */
     .block-container {
         padding-top: 1.5rem !important;
         padding-bottom: 0rem !important;
     }
     
-    /* Ana başlık boşluğunu sıkıştır */
     div[data-testid="stVerticalBlock"] > div > h1 {
         padding-bottom: 0px !important;
         margin-bottom: -15px !important;
     }
     
-    /* Metrik kutularının hizasını düzelt */
     div[data-testid="stMetricValue"] {
         font-size: 2rem !important;
         color: #38bdf8 !important;
         font-weight: 800 !important;
     }
     
-    /* Expander (Açılır Menü) boşluklarını azalt */
     div[data-testid="stExpander"] {
         margin-top: -10px !important;
     }
     
-    /* Selectbox ve Multiselect iç boşluklarını küçült */
     div[data-baseweb="select"] {
         margin-bottom: -10px !important;
+    }
+
+    /* --- YENİ: BAŞLIK VE CANLI YAYIN (LIVE) ROZETİ --- */
+    .custom-header-container {
+        display: flex;
+        align-items: center;
+        margin-bottom: 25px; /* Alt metni sildiğimiz için biraz boşluk bırakıyoruz */
+    }
+    
+    .custom-header-container h1 {
+        margin: 0;
+        padding: 0;
+        font-size: 2.25rem;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+
+    .live-badge {
+        display: inline-flex;
+        align-items: center;
+        background-color: rgba(239, 68, 68, 0.15); /* Yarı saydam kırmızı arka plan */
+        border: 1px solid rgba(239, 68, 68, 0.4);
+        color: #ef4444; /* Parlak kırmızı */
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        margin-left: 18px; /* Başlıktan biraz uzaklaştır */
+    }
+
+    .blinking-dot {
+        width: 8px;
+        height: 8px;
+        background-color: #ef4444;
+        border-radius: 50%;
+        margin-right: 8px;
+        /* Nabız (Pulse) Animasyonu */
+        animation: pulse-animation 1.5s infinite;
+    }
+
+    @keyframes pulse-animation {
+        0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); opacity: 1; }
+        70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); opacity: 0.4; }
+        100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); opacity: 1; }
     }
     </style>
 """, unsafe_allow_html=True)
@@ -87,8 +127,15 @@ def fetch_live_fantasy_data():
     df = pd.DataFrame(player_list)
     return df
 
-st.title("🏀 NBA Fantasy Radar & Verim Terminali")
-st.caption("Canlı Sistem Aktif: Veriler otomatik güncellenir. Sıralamak için sütun başlıklarına tıklayın.")
+# 3. YENİ BAŞLIK VE CANLI ROZETİ (Özel HTML/CSS ile)
+st.markdown("""
+    <div class="custom-header-container">
+        <h1>🏀 NBA Fantasy Radar & Verim Terminali</h1>
+        <div class="live-badge">
+            <div class="blinking-dot"></div> LIVE
+        </div>
+    </div>
+""", unsafe_allow_html=True)
 
 try:
     df = fetch_live_fantasy_data()
@@ -101,15 +148,13 @@ except Exception as e:
 # ==========================================
 main_col_left, main_col_right = st.columns([1.8, 1])
 
-# SOL TARAF: Metrik Kartları
 with main_col_left:
-    st.write("") # Dikey hizalamayı sağ tarafla eşitlemek için ufak bir boşluk
+    st.write("") 
     metric_col1, metric_col2, metric_col3 = st.columns(3)
     metric_placeholder1 = metric_col1.empty()
     metric_placeholder2 = metric_col2.empty()
     metric_placeholder3 = metric_col3.empty()
 
-# SAĞ TARAF: Filtre Paneli (Boşluksuz ve Kutudan Bağımsız Düzen)
 with main_col_right:
     st.markdown("<h5 style='margin-bottom:10px; margin-top:5px; color:#f8fafc;'>🎯 Radar Filtreleri</h5>", unsafe_allow_html=True)
     
