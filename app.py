@@ -8,7 +8,6 @@ st.set_page_config(page_title="NBA Fantasy Scout", layout="wide", page_icon="�
 # 2. Özel CSS: Arayüzü Uygulamaya (App) Dönüştür ve Animasyonlar Ekle
 st.markdown("""
     <style>
-    /* Streamlit varsayılan üst menü ve alt bilgiyi gizle */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
@@ -19,10 +18,9 @@ st.markdown("""
         padding-bottom: 0rem !important;
     }
     
-    div[data-testid="stMetricValue"] {
-        font-size: 2rem !important;
-        color: #38bdf8 !important;
-        font-weight: 800 !important;
+    div[data-testid="stVerticalBlock"] > div > h1 {
+        padding-bottom: 0px !important;
+        margin-bottom: -15px !important;
     }
     
     div[data-testid="stExpander"] {
@@ -33,7 +31,7 @@ st.markdown("""
         margin-bottom: -10px !important;
     }
 
-    /* --- YENİ: BAŞLIK, LOGO VE CANLI YAYIN ROZETİ --- */
+    /* --- BAŞLIK, LOGO VE CANLI YAYIN ROZETİ --- */
     .custom-header-container {
         display: flex;
         align-items: center;
@@ -50,12 +48,11 @@ st.markdown("""
         margin: 0;
         padding: 0;
         font-size: 2.2rem;
-        font-weight: 800; /* Kalın NBA FANTASY */
+        font-weight: 800;
         line-height: 1.2;
         letter-spacing: -0.5px;
     }
     
-    /* SCOUT yazısının ince ve modern durması için */
     .header-thin {
         font-weight: 300;
         color: #94a3b8;
@@ -89,6 +86,41 @@ st.markdown("""
         0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); opacity: 1; }
         70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); opacity: 0.4; }
         100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); opacity: 1; }
+    }
+
+    /* --- YENİ: ESPOR TARZI METRİK KARTLARI (KONSEPT 1) --- */
+    .esport-card {
+        border-left: 3px solid #38bdf8;
+        padding-left: 14px;
+        margin-top: 5px;
+        margin-bottom: 15px;
+    }
+    .esport-label {
+        color: #94a3b8;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 2.5px;
+        margin-bottom: 4px;
+    }
+    .esport-value {
+        color: #ffffff;
+        font-size: 28px;
+        font-weight: 900;
+        letter-spacing: -0.5px;
+        margin-bottom: 8px;
+        line-height: 1.1;
+    }
+    .esport-pill {
+        display: inline-flex;
+        align-items: center;
+        background-color: rgba(34, 197, 94, 0.15); 
+        color: #4ade80;
+        border: 1px solid rgba(34, 197, 94, 0.3);
+        padding: 3px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -208,20 +240,46 @@ else:
 sorted_table = filtered.sort_values(by="Value", ascending=False)
 
 # ==========================================
-# METRİKLERİ DOLDURMA
+# ESPOR KARTLARINI DOLDURMA (Özel HTML)
 # ==========================================
-metric_placeholder1.metric("Filtrelenen Oyuncu", len(sorted_table))
+# 1. Kart: Filtrelenen Oyuncu Sayısı (Gri Vurgu)
+html_m1 = f"""
+<div class="esport-card" style="border-left-color: #64748b;">
+    <div class="esport-label">R A D A R   A C T I V E</div>
+    <div class="esport-value">{len(sorted_table)}</div>
+    <div class="esport-pill" style="background-color: rgba(100, 116, 139, 0.15); color: #94a3b8; border-color: rgba(100, 116, 139, 0.3);">
+        ✓ {len(df)} OYUNCUDAN
+    </div>
+</div>
+"""
+metric_placeholder1.markdown(html_m1, unsafe_allow_html=True)
 
+# 2 & 3. Kartlar: Value ve Form Liderleri
 if not sorted_table.empty:
-    best_value_player = sorted_table.iloc[0]["Oyuncu"]
-    best_value_score = sorted_table.iloc[0]["Value"]
-    metric_placeholder2.metric("🏆 En Yüksek Value", f"{best_value_player}", f"{best_value_score:.2f} FP/$")
+    best_value_row = sorted_table.iloc[0]
+    html_m2 = f"""
+    <div class="esport-card" style="border-left-color: #38bdf8;">
+        <div class="esport-label">S C O U T   P I C K</div>
+        <div class="esport-value">{best_value_row['Oyuncu']}</div>
+        <div class="esport-pill">↑ {best_value_row['Value']:.2f} FP/$</div>
+    </div>
+    """
+    metric_placeholder2.markdown(html_m2, unsafe_allow_html=True)
     
     best_form_row = sorted_table.loc[sorted_table['Form'].idxmax()]
-    metric_placeholder3.metric("🔥 En Formda", f"{best_form_row['Oyuncu']}", f"{best_form_row['Form']:.1f} Form")
+    html_m3 = f"""
+    <div class="esport-card" style="border-left-color: #f97316;">
+        <div class="esport-label">F O R M   L E A D E R</div>
+        <div class="esport-value">{best_form_row['Oyuncu']}</div>
+        <div class="esport-pill" style="background-color: rgba(249, 115, 22, 0.15); color: #fb923c; border-color: rgba(249, 115, 22, 0.3);">
+            🔥 {best_form_row['Form']:.1f} Form
+        </div>
+    </div>
+    """
+    metric_placeholder3.markdown(html_m3, unsafe_allow_html=True)
 else:
-    metric_placeholder2.metric("🏆 En Yüksek Value", "-", "-")
-    metric_placeholder3.metric("🔥 En Formda", "-", "-")
+    metric_placeholder2.markdown("""<div class="esport-card" style="border-left-color: #38bdf8;"><div class="esport-label">S C O U T   P I C K</div><div class="esport-value">-</div></div>""", unsafe_allow_html=True)
+    metric_placeholder3.markdown("""<div class="esport-card" style="border-left-color: #f97316;"><div class="esport-label">F O R M   L E A D E R</div><div class="esport-value">-</div></div>""", unsafe_allow_html=True)
 
 # ==========================================
 # ANA TABLO
