@@ -2,7 +2,31 @@ import requests
 import pandas as pd
 import streamlit as st
 
-st.set_page_config(page_title="NBA Fantasy Verim Paneli", layout="wide", page_icon="🏀")
+# 1. Sayfa ve Tema Ayarları
+st.set_page_config(page_title="NBA Fantasy Radar", layout="wide", page_icon="🏀", initial_sidebar_state="expanded")
+
+# 2. Özel CSS: Arayüzü Uygulamaya (App) Dönüştür
+st.markdown("""
+    <style>
+    /* Streamlit varsayılan üst menü ve alt bilgiyi gizle */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
+    /* Üst boşluğu azalt */
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 0rem;
+    }
+    
+    /* Metrik kutularını daha şık ve belirgin yap */
+    div[data-testid="stMetricValue"] {
+        font-size: 2.2rem !important;
+        color: #38bdf8 !important;
+        font-weight: 800 !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 @st.cache_data(show_spinner=True, ttl=900)
 def fetch_live_fantasy_data():
@@ -30,16 +54,10 @@ def fetch_live_fantasy_data():
         gp = int(round(total_points / ppg_val)) if ppg_val > 0 else 0
         minutes = float(el.get("minutes", 0.0) or 0.0)
         
-        # Sayı verisi Fantezi API'sinde goals_scored veya points olarak saklanır
-        pts = float(el.get("goals_scored", el.get("pts", el.get("points", 0.0))) or 0.0)
-        reb = float(el.get("rebounds", 0.0) or 0.0)
-        ast = float(el.get("assists", 0.0) or 0.0)
-        stl = float(el.get("steals", 0.0) or 0.0)
-        blk = float(el.get("blocks", 0.0) or 0.0)
-        
         value_ratio = round(total_points / cost, 2) if cost > 0 else 0.0
         fp_per_min = round(total_points / minutes, 2) if minutes > 0 else 0.0
         
+        # Sadece fantezi bütçe ve verim odaklı veriler tutuldu
         player_list.append({
             "Oyuncu": full_name,
             "Mevki": "BC" if el["element_type"] == 1 else "FC",
@@ -47,54 +65,47 @@ def fetch_live_fantasy_data():
             "Fiyat (M$)": cost,
             "Toplam FP": total_points,
             "FP Ort. (PPG)": ppg_val,
-            "Form (Son Maçlar)": form_val,
+            "Form": form_val,
             "Value (FP/$)": value_ratio,
             "FP/Min": fp_per_min,
             "Maç": gp,
-            "Dakika": minutes,
-            "Sayı": pts,
-            "Reb": reb,
-            "Ast": ast,
-            "Top Çalma": stl,
-            "Blok": blk
+            "Dakika": minutes
         })
         
     df = pd.DataFrame(player_list)
     return df
 
-st.title("🏀 NBA Fantasy Tavan Bütçe & Verim Paneli (Canlı)")
+# 3. Başlık ve Veri Çekme
+st.title("🏀 NBA Fantasy Radar & Verim Terminali")
+st.caption("Canlı Sistem Aktif: Veriler arka planda otomatik güncellenir.")
 
-with st.spinner("Canlı fantezi verileri yükleniyor..."):
-    try:
-        df = fetch_live_fantasy_data()
-        st.success("Canlı Sistem Aktif: Veriler Otomatik Güncelleniyor!")
-    except Exception as e:
-        st.error(f"Hata oluştu: {e}")
-        st.stop()
+try:
+    df = fetch_live_fantasy_data()
+except Exception as e:
+    st.error(f"Veri çekme hatası: {e}")
+    st.stop()
 
-# Sol Filtreler
-st.sidebar.header("🎯 Filtreler")
+# 4. SOL MENÜ (Sidebar) - Temizlenmiş ve Birleştirilmiş
+st.sidebar.header("🎯 Radar Filtreleri")
 
-# Özel Kıyaslama Listesi (Multiselect)
+# Arama ve Karşılaştırma Tek Kutuda Birleşti
 selected_players = st.sidebar.multiselect(
-    "⚖️ Karşılaştırılacak Oyuncuları Seç",
+    "🔍 Oyuncu Ara & Karşılaştır",
     options=sorted(df["Oyuncu"].unique()),
-    help="Buradan birden fazla oyuncu seçerek doğrudan alt alta kıyaslayabilirsiniz."
+    help="İsim yazarak arayın. Birden fazla seçerek kıyaslayın. Boş bırakırsanız filtrelere uygun tüm liste görünür."
 )
 
-pos_filter = st.sidebar.radio("Mevki", ["Tümü", "BC (Backcourt)", "FC (Frontcourt)"])
+pos_filter = st.sidebar.radio("Mevki", ["Tümü", "BC (Backcourt)", "FC (Frontcourt)"], horizontal=True)
 
 min_p = float(df["Fiyat (M$)"].min()) if not df.empty else 5.0
 max_p = float(df["Fiyat (M$)"].max()) if not df.empty else 23.0
-tavan_maas = st.sidebar.slider("Tavan Maaş Sınırı (M$)", min_value=min_p, max_value=max_p, value=max_p, step=0.5)
+tavan_maas = st.sidebar.slider("💰 Maksimum Fiyat (M$)", min_value=min_p, max_value=max_p, value=max_p, step=0.5)
 
-min_mac = st.sidebar.slider("Minimum Maç Sayısı (GP)", 0, 82, 0)
-min_dk = st.sidebar.slider("Minimum Süre (Dk)", 0, 50, 0)
-arama = st.sidebar.text_input("Oyuncu İsmi Ara (Filtre)")
+min_mac = st.sidebar.slider("🗓️ Minimum Maç (GP)", 0, 82, 0)
+min_dk = st.sidebar.slider("⏱️ Minimum Süre (Dk)", 0, 150, 0)
 
-# Filtreleme Mantığı
+# 5. FİLTRELEME MANTIĞI
 if selected_players:
-    # Eğer çoklu seçim yapıldıysa doğrudan bu oyuncuları göster
     filtered = df[df["Oyuncu"].isin(selected_players)]
 else:
     filtered = df[
@@ -106,35 +117,47 @@ else:
         filtered = filtered[filtered["Mevki"] == "BC"]
     elif pos_filter == "FC (Frontcourt)":
         filtered = filtered[filtered["Mevki"] == "FC"]
-    if arama:
-        filtered = filtered[filtered["Oyuncu"].str.contains(arama, case=False)]
 
-sorted_table = filtered.sort_values(by="Toplam FP", ascending=False)
+# Tabloyu Value'ye göre sırala (Değer avcılığı ön planda)
+sorted_table = filtered.sort_values(by="Value (FP/$)", ascending=False)
 
-st.metric("Kriterlere Uyan Oyuncu Sayısı", len(sorted_table))
+# 6. DİNAMİK ÜST METRİKLER
+col1, col2, col3 = st.columns(3)
+col1.metric("Filtrelenen Oyuncu", len(sorted_table))
 
-view_cols = [
-    "Oyuncu", "Mevki", "Takım", "Fiyat (M$)", "Toplam FP", "FP Ort. (PPG)", 
-    "Form (Son Maçlar)", "Value (FP/$)", "FP/Min", "Maç", "Dakika", "Sayı", "Reb", "Ast", "Top Çalma", "Blok"
-]
+if not sorted_table.empty:
+    best_value_player = sorted_table.iloc[0]["Oyuncu"]
+    best_value_score = sorted_table.iloc[0]["Value (FP/$)"]
+    col2.metric("🏆 En Yüksek Value", f"{best_value_player}", f"{best_value_score} FP/$")
+    
+    avg_price = sorted_table["Fiyat (M$)"].mean()
+    col3.metric("Ortalama Maliyet", f"{avg_price:.1f} M$")
+else:
+    col2.metric("🏆 En Yüksek Value", "-", "-")
+    col3.metric("Ortalama Maliyet", "-")
 
+# 7. ANA TABLO - GÖRSELLEŞTİRİLMİŞ Barlar (ProgressColumn)
 st.dataframe(
-    sorted_table[view_cols],
+    sorted_table,
     use_container_width=True,
     hide_index=True,
     column_config={
+        "Oyuncu": st.column_config.TextColumn(width="medium"),
+        "Takım": st.column_config.TextColumn(width="small"),
         "Fiyat (M$)": st.column_config.NumberColumn(format="%.1f M$"),
         "Toplam FP": st.column_config.NumberColumn(format="%.1f"),
         "FP Ort. (PPG)": st.column_config.NumberColumn(format="%.1f"),
-        "Form (Son Maçlar)": st.column_config.NumberColumn(format="%.1f"),
-        "Value (FP/$)": st.column_config.NumberColumn(format="%.2f"),
-        "FP/Min": st.column_config.NumberColumn(format="%.2f"),
+        # Görsel Barlar (Maksimum değerler NBA standartlarına göre ayarlandı)
+        "Form": st.column_config.ProgressColumn(
+            "🔥 Form", format="%.1f", min_value=0, max_value=80
+        ),
+        "Value (FP/$)": st.column_config.ProgressColumn(
+            "💎 Value (FP/$)", format="%.2f", min_value=0, max_value=30
+        ),
+        "FP/Min": st.column_config.ProgressColumn(
+            "⚡ FP/Min", format="%.2f", min_value=0, max_value=2.0
+        ),
         "Maç": st.column_config.NumberColumn(format="%d"),
-        "Dakika": st.column_config.NumberColumn(format="%.1f"),
-        "Sayı": st.column_config.NumberColumn(format="%.1f"),
-        "Reb": st.column_config.NumberColumn(format="%.1f"),
-        "Ast": st.column_config.NumberColumn(format="%.1f"),
-        "Top Çalma": st.column_config.NumberColumn(format="%.1f"),
-        "Blok": st.column_config.NumberColumn(format="%.1f")
+        "Dakika": st.column_config.NumberColumn(format="%.1f")
     }
 )
