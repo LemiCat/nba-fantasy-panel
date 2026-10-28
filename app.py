@@ -51,12 +51,14 @@ def fetch_live_fantasy_data():
         ppg_val = round(ppg_raw / 10.0, 1) if ppg_raw > 50 else round(ppg_raw, 1)
         
         gp = int(round(total_points / ppg_val)) if ppg_val > 0 else 0
-        minutes = float(el.get("minutes", 0.0) or 0.0)
+        
+        # --- TOPLAM DAKİKA YERİNE MAÇ BAŞINA DAKİKA (MPG) HESABI ---
+        total_minutes = float(el.get("minutes", 0.0) or 0.0)
+        mpg = round(total_minutes / gp, 1) if gp > 0 else 0.0
         
         value_ratio = round(total_points / cost, 2) if cost > 0 else 0.0
-        fp_per_min = round(total_points / minutes, 2) if minutes > 0 else 0.0
+        fp_per_min = round(total_points / total_minutes, 2) if total_minutes > 0 else 0.0
         
-        # Sadece bütçe ve verim odaklı veriler tutuldu
         player_list.append({
             "Oyuncu": full_name,
             "Mevki": "BC" if el["element_type"] == 1 else "FC",
@@ -65,10 +67,10 @@ def fetch_live_fantasy_data():
             "Toplam FP": total_points,
             "FP Ort. (PPG)": ppg_val,
             "Form": form_val,
-            "Value (FP/$)": value_ratio,
+            "Value": value_ratio,
             "FP/Min": fp_per_min,
             "Maç": gp,
-            "Dakika": minutes
+            "Dk/Maç": mpg
         })
         
     df = pd.DataFrame(player_list)
@@ -100,7 +102,8 @@ max_p = float(df["Fiyat (M$)"].max()) if not df.empty else 23.0
 tavan_maas = st.sidebar.slider("💰 Maksimum Fiyat (M$)", min_value=min_p, max_value=max_p, value=max_p, step=0.5)
 
 min_mac = st.sidebar.slider("🗓️ Minimum Maç (GP)", 0, 82, 0)
-min_dk = st.sidebar.slider("⏱️ Minimum Süre (Dk)", 0, 150, 0)
+# --- 0-48 DAKİKA ARASI YENİ MAÇ BAŞI SÜRE FİLTRESİ ---
+min_mpg = st.sidebar.slider("⏱️ Min Süre (Dk/Maç)", 0, 48, 0)
 
 # 5. FİLTRELEME MANTIĞI
 if selected_players:
@@ -109,15 +112,14 @@ else:
     filtered = df[
         (df["Fiyat (M$)"] <= tavan_maas) & 
         (df["Maç"] >= min_mac) &
-        (df["Dakika"] >= min_dk)
+        (df["Dk/Maç"] >= min_mpg)
     ]
     if pos_filter == "BC (Backcourt)":
         filtered = filtered[filtered["Mevki"] == "BC"]
     elif pos_filter == "FC (Frontcourt)":
         filtered = filtered[filtered["Mevki"] == "FC"]
 
-# Varsayılan olarak Value'ye göre azalan sırala
-sorted_table = filtered.sort_values(by="Value (FP/$)", ascending=False)
+sorted_table = filtered.sort_values(by="Value", ascending=False)
 
 # 6. DİNAMİK ÜST METRİKLER
 col1, col2, col3 = st.columns(3)
@@ -125,14 +127,15 @@ col1.metric("Filtrelenen Oyuncu", len(sorted_table))
 
 if not sorted_table.empty:
     best_value_player = sorted_table.iloc[0]["Oyuncu"]
-    best_value_score = sorted_table.iloc[0]["Value (FP/$)"]
+    best_value_score = sorted_table.iloc[0]["Value"]
     col2.metric("🏆 En Yüksek Value", f"{best_value_player}", f"{best_value_score:.2f} FP/$")
     
-    avg_price = sorted_table["Fiyat (M$)"].mean()
-    col3.metric("Ortalama Maliyet (Liste)", f"{avg_price:.1f} M$")
+    # Ortalama maliyet yerine, listedeki en formda oyuncuyu göster
+    best_form_row = sorted_table.loc[sorted_table['Form'].idxmax()]
+    col3.metric("🔥 En Formda (Hot Streak)", f"{best_form_row['Oyuncu']}", f"{best_form_row['Form']:.1f} Form")
 else:
     col2.metric("🏆 En Yüksek Value", "-", "-")
-    col3.metric("Ortalama Maliyet", "-")
+    col3.metric("🔥 En Formda (Hot Streak)", "-", "-")
 
 # 7. ANA TABLO - STANDART STREAMLIT DATAFRAME
 st.dataframe(
@@ -144,9 +147,9 @@ st.dataframe(
         "Toplam FP": st.column_config.NumberColumn(format="%.1f"),
         "FP Ort. (PPG)": st.column_config.NumberColumn(format="%.1f"),
         "Form": st.column_config.NumberColumn("🔥 Form", format="%.1f"),
-        "Value (FP/$)": st.column_config.NumberColumn("💎 Value", format="%.2f"),
+        "Value": st.column_config.NumberColumn("💎 Value (FP/$)", format="%.2f"),
         "FP/Min": st.column_config.NumberColumn("⚡ FP/Min", format="%.2f"),
         "Maç": st.column_config.NumberColumn(format="%d"),
-        "Dakika": st.column_config.NumberColumn(format="%.1f")
+        "Dk/Maç": st.column_config.NumberColumn(format="%.1f")
     }
 )
