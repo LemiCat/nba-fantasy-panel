@@ -3,7 +3,7 @@ import pandas as pd
 import streamlit as st
 
 # 1. Sayfa ve Tema Ayarları
-st.set_page_config(page_title="NBA Fantasy Radar", layout="wide", page_icon="🏀", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="NBA Fantasy Scout", layout="wide", page_icon="🏀", initial_sidebar_state="collapsed")
 
 # 2. Özel CSS: Arayüzü Uygulamaya (App) Dönüştür ve Animasyonlar Ekle
 st.markdown("""
@@ -17,11 +17,6 @@ st.markdown("""
     .block-container {
         padding-top: 1.5rem !important;
         padding-bottom: 0rem !important;
-    }
-    
-    div[data-testid="stVerticalBlock"] > div > h1 {
-        padding-bottom: 0px !important;
-        margin-bottom: -15px !important;
     }
     
     div[data-testid="stMetricValue"] {
@@ -38,33 +33,47 @@ st.markdown("""
         margin-bottom: -10px !important;
     }
 
-    /* --- YENİ: BAŞLIK VE CANLI YAYIN (LIVE) ROZETİ --- */
+    /* --- YENİ: BAŞLIK, LOGO VE CANLI YAYIN ROZETİ --- */
     .custom-header-container {
         display: flex;
         align-items: center;
-        margin-bottom: 25px; /* Alt metni sildiğimiz için biraz boşluk bırakıyoruz */
+        margin-bottom: 25px;
+    }
+    
+    .nba-official-logo {
+        height: 38px; 
+        margin-right: 15px;
+        border-radius: 2px;
     }
     
     .custom-header-container h1 {
         margin: 0;
         padding: 0;
-        font-size: 2.25rem;
-        font-weight: 700;
+        font-size: 2.2rem;
+        font-weight: 800; /* Kalın NBA FANTASY */
         line-height: 1.2;
+        letter-spacing: -0.5px;
+    }
+    
+    /* SCOUT yazısının ince ve modern durması için */
+    .header-thin {
+        font-weight: 300;
+        color: #94a3b8;
+        letter-spacing: 1px;
     }
 
     .live-badge {
         display: inline-flex;
         align-items: center;
-        background-color: rgba(239, 68, 68, 0.15); /* Yarı saydam kırmızı arka plan */
+        background-color: rgba(239, 68, 68, 0.15); 
         border: 1px solid rgba(239, 68, 68, 0.4);
-        color: #ef4444; /* Parlak kırmızı */
+        color: #ef4444; 
         padding: 4px 12px;
         border-radius: 20px;
         font-size: 13px;
         font-weight: 800;
         letter-spacing: 0.5px;
-        margin-left: 18px; /* Başlıktan biraz uzaklaştır */
+        margin-left: 20px; 
     }
 
     .blinking-dot {
@@ -73,7 +82,6 @@ st.markdown("""
         background-color: #ef4444;
         border-radius: 50%;
         margin-right: 8px;
-        /* Nabız (Pulse) Animasyonu */
         animation: pulse-animation 1.5s infinite;
     }
 
@@ -127,10 +135,11 @@ def fetch_live_fantasy_data():
     df = pd.DataFrame(player_list)
     return df
 
-# 3. YENİ BAŞLIK VE CANLI ROZETİ (Özel HTML/CSS ile)
+# 3. YENİ BAŞLIK VE CANLI ROZETİ
 st.markdown("""
     <div class="custom-header-container">
-        <h1>🏀 NBA Fantasy Radar & Verim Terminali</h1>
+        <img src="https://upload.wikimedia.org/wikipedia/en/0/03/National_Basketball_Association_logo.svg" class="nba-official-logo" alt="NBA Logo">
+        <h1>NBA FANTASY <span class="header-thin">SCOUT</span></h1>
         <div class="live-badge">
             <div class="blinking-dot"></div> LIVE
         </div>
