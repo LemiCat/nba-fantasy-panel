@@ -149,7 +149,7 @@ def fetch_live_fantasy_data():
             continue
             
         total_minutes = float(el.get("minutes", 0.0) or 0.0)
-        # SIFIR DAKİKA İNFAZI: Hiç oynamamış oyuncuları listeden tamamen sil
+        # SIFIR DAKİKA İNFAZI
         if total_minutes <= 0:
             continue
             
@@ -157,17 +157,23 @@ def fetch_live_fantasy_data():
         full_name = f"{el['first_name']} {el['second_name']}"
         cost = float(el.get("now_cost", el.get("cost", 0))) / 10.0
         
-        total_points = float(el.get("total_points", 0.0) or 0.0)
-        ppg_raw = float(el.get("points_per_game", 0.0) or 0.0)
+        # --- MATEMATİK HATASI DÜZELTİLDİ: / 10.0 EKLENDİ ---
+        form_raw = float(el.get("form", 0.0) or 0.0)
+        form_val = round(form_raw / 10.0, 1) if form_raw > 50 else round(form_raw, 1)
         
-        gp = int(round(total_points / ppg_raw)) if ppg_raw > 0 else 0
+        tp_raw = float(el.get("total_points", 0.0) or 0.0)
+        total_points = round(tp_raw / 10.0, 1) if tp_raw > 0 else 0.0
+        
+        ppg_raw = float(el.get("points_per_game", 0.0) or 0.0)
+        ppg_val = round(ppg_raw / 10.0, 1) if ppg_raw > 50 else round(ppg_raw, 1)
+        
+        gp = int(round(total_points / ppg_val)) if ppg_val > 0 else 0
         if gp == 0 and total_minutes > 0:
             gp = 1
             
-        # API BUG FİLTRESİ: Form, PPG'nin 1.5 katından fazlaysa (sahte veri), gerçeğe sabitle
-        form_raw = float(el.get("form", 0.0) or 0.0)
-        if form_raw > (ppg_raw * 1.5):
-            form_raw = ppg_raw
+        # API BUG FİLTRESİ
+        if form_val > (ppg_val * 1.5):
+            form_val = ppg_val
 
         if gp > team_max_games[team_name]:
             team_max_games[team_name] = gp
@@ -178,8 +184,8 @@ def fetch_live_fantasy_data():
             "Takım": team_name,
             "Fiyat (M$)": cost,
             "Toplam FP": total_points,
-            "FP Ort. (PPG)": ppg_raw,
-            "Form": form_raw,
+            "FP Ort. (PPG)": ppg_val,
+            "Form": form_val,
             "Maç": gp,
             "Toplam Dk": total_minutes
         })
@@ -190,7 +196,6 @@ def fetch_live_fantasy_data():
         gp = p["Maç"]
         team_games = team_max_games[p["Takım"]]
         
-        # Devamlılık Yüzdesi
         availability = round((gp / team_games) * 100) if team_games > 0 else 0
         
         mpg = round(p["Toplam Dk"] / gp, 1) if gp > 0 else 0.0
@@ -207,7 +212,7 @@ def fetch_live_fantasy_data():
             "Form": p["Form"],
             "Value": value_ratio,
             "FP/Min": fp_per_min,
-            "Maç (Dev%)": f"{gp} (%{availability})", # BİRLEŞTİRİLMİŞ SÜTUN
+            "Maç (Dev%)": f"{gp} (%{availability})",
             "Dk/Maç": mpg,
             "_Mac_Siralama": gp 
         })
@@ -336,7 +341,6 @@ else:
 # ==========================================
 st.markdown("<br>", unsafe_allow_html=True)
 
-# Arka planda filtreleme için kullandığımız _Mac_Siralama sütununu ekranda gizliyoruz
 columns_to_show = ["Oyuncu", "Mevki", "Takım", "Fiyat (M$)", "Toplam FP", "FP Ort. (PPG)", "Form", "Value", "FP/Min", "Maç (Dev%)", "Dk/Maç"]
 display_table = sorted_table[columns_to_show]
 
