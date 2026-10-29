@@ -5,7 +5,7 @@ import streamlit as st
 # 1. Sayfa ve Tema Ayarları
 st.set_page_config(page_title="NBA Fantasy Scout", layout="wide", page_icon="🏀", initial_sidebar_state="collapsed")
 
-# 2. Özel CSS
+# 2. Özel CSS: Arayüzü Uygulamaya Dönüştür ve Ghost UI Ekle
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
@@ -140,29 +140,35 @@ def fetch_live_fantasy_data():
     res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=15).json()
     teams = {t["id"]: t.get("short_name", t["name"]) for t in res["teams"]}
     
-    # 1. ADIM: Takımların maksimum oynadığı maç sayısını bulmak için tarama
     raw_players = []
     team_max_games = {team_name: 0 for team_name in teams.values()}
     
+    # 1. TUR: Temizleme ve Maksimum Takım Maçı Bulma
     for el in res["elements"]:
         if el.get("status") in ["u"]:
             continue
             
-        full_name = f"{el['first_name']} {el['second_name']}"
-        team_name = teams.get(el["team"], "NBA")
-        cost = float(el.get("now_cost", el.get("cost", 0))) / 10.0
-        form_raw = float(el.get("form", 0.0) or 0.0)
-        form_val = round(form_raw / 10.0, 1) if form_raw > 50 else round(form_raw, 1)
-        tp_raw = float(el.get("total_points", 0.0) or 0.0)
-        total_points = round(tp_raw / 10.0, 1) if tp_raw > 0 else 0.0
-        ppg_raw = float(el.get("points_per_game", 0.0) or 0.0)
-        ppg_val = round(ppg_raw / 10.0, 1) if ppg_raw > 50 else round(ppg_raw, 1)
-        
-        # Sadece sahaya çıktığı maçlar (Dakikası olanlar)
-        gp = int(round(total_points / ppg_val)) if ppg_val > 0 else 0
         total_minutes = float(el.get("minutes", 0.0) or 0.0)
+        # SIFIR DAKİKA İNFAZI: Hiç oynamamış oyuncuları listeden tamamen sil
+        if total_minutes <= 0:
+            continue
+            
+        team_name = teams.get(el["team"], "NBA")
+        full_name = f"{el['first_name']} {el['second_name']}"
+        cost = float(el.get("now_cost", el.get("cost", 0))) / 10.0
         
-        # Takımın maç sayısını güncelle
+        total_points = float(el.get("total_points", 0.0) or 0.0)
+        ppg_raw = float(el.get("points_per_game", 0.0) or 0.0)
+        
+        gp = int(round(total_points / ppg_raw)) if ppg_raw > 0 else 0
+        if gp == 0 and total_minutes > 0:
+            gp = 1
+            
+        # API BUG FİLTRESİ: Form, PPG'nin 1.5 katından fazlaysa (sahte veri), gerçeğe sabitle
+        form_raw = float(el.get("form", 0.0) or 0.0)
+        if form_raw > (ppg_raw * 1.5):
+            form_raw = ppg_raw
+
         if gp > team_max_games[team_name]:
             team_max_games[team_name] = gp
             
@@ -172,41 +178,38 @@ def fetch_live_fantasy_data():
             "Takım": team_name,
             "Fiyat (M$)": cost,
             "Toplam FP": total_points,
-            "FP Ort. (PPG)": ppg_val,
-            "Form": form_val,
+            "FP Ort. (PPG)": ppg_raw,
+            "Form": form_raw,
             "Maç": gp,
             "Toplam Dk": total_minutes
         })
         
-    # 2. ADIM: Saf verim ve devamlılık (availability) hesaplamaları
+    # 2. TUR: Saf Verim ve Birleşik Sütun Hesabı
     player_list = []
     for p in raw_players:
-        cost = p["Fiyat (M$)"]
-        total_points = p["Toplam FP"]
-        total_minutes = p["Toplam Dk"]
         gp = p["Maç"]
         team_games = team_max_games[p["Takım"]]
         
-        # Devamlılık (%)
+        # Devamlılık Yüzdesi
         availability = round((gp / team_games) * 100) if team_games > 0 else 0
         
-        mpg = round(total_minutes / gp, 1) if gp > 0 else 0.0
-        value_ratio = round(total_points / cost, 2) if cost > 0 else 0.0
-        fp_per_min = round(total_points / total_minutes, 2) if total_minutes > 0 else 0.0
+        mpg = round(p["Toplam Dk"] / gp, 1) if gp > 0 else 0.0
+        value_ratio = round(p["Toplam FP"] / p["Fiyat (M$)"], 2) if p["Fiyat (M$)"] > 0 else 0.0
+        fp_per_min = round(p["Toplam FP"] / p["Toplam Dk"], 2) if p["Toplam Dk"] > 0 else 0.0
         
         player_list.append({
             "Oyuncu": p["Oyuncu"],
             "Mevki": p["Mevki"],
             "Takım": p["Takım"],
-            "Fiyat (M$)": cost,
-            "Toplam FP": total_points,
+            "Fiyat (M$)": p["Fiyat (M$)"],
+            "Toplam FP": p["Toplam FP"],
             "FP Ort. (PPG)": p["FP Ort. (PPG)"],
             "Form": p["Form"],
             "Value": value_ratio,
             "FP/Min": fp_per_min,
-            "Maç": gp,
+            "Maç (Dev%)": f"{gp} (%{availability})", # BİRLEŞTİRİLMİŞ SÜTUN
             "Dk/Maç": mpg,
-            "Devamlılık": availability
+            "_Mac_Siralama": gp 
         })
         
     df = pd.DataFrame(player_list)
@@ -278,7 +281,7 @@ if selected_players:
 else:
     filtered = df[
         (df["Fiyat (M$)"] <= tavan_maas) & 
-        (df["Maç"] >= min_mac) &
+        (df["_Mac_Siralama"] >= min_mac) &
         (df["Dk/Maç"] >= min_mpg)
     ]
     if pos_filter == "BC":
@@ -332,8 +335,13 @@ else:
 # ANA TABLO
 # ==========================================
 st.markdown("<br>", unsafe_allow_html=True)
+
+# Arka planda filtreleme için kullandığımız _Mac_Siralama sütununu ekranda gizliyoruz
+columns_to_show = ["Oyuncu", "Mevki", "Takım", "Fiyat (M$)", "Toplam FP", "FP Ort. (PPG)", "Form", "Value", "FP/Min", "Maç (Dev%)", "Dk/Maç"]
+display_table = sorted_table[columns_to_show]
+
 st.dataframe(
-    sorted_table,
+    display_table,
     use_container_width=True,
     hide_index=True,
     height=600,
@@ -344,8 +352,7 @@ st.dataframe(
         "Form": st.column_config.NumberColumn("🔥 Form", format="%.1f"),
         "Value": st.column_config.NumberColumn("💎 Value (FP/$)", format="%.2f"),
         "FP/Min": st.column_config.NumberColumn("⚡ FP/Min", format="%.2f"),
-        "Maç": st.column_config.NumberColumn(format="%d"),
-        "Dk/Maç": st.column_config.NumberColumn(format="%.1f"),
-        "Devamlılık": st.column_config.NumberColumn("Devamlılık (%)", format="%d %%") # Yeni eklenen veri
+        "Maç (Dev%)": st.column_config.TextColumn("Maç (Dev%)", width="small"),
+        "Dk/Maç": st.column_config.NumberColumn(format="%.1f")
     }
 )
