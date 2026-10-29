@@ -206,14 +206,14 @@ def fetch_live_fantasy_data():
             "Mevki": "BC" if el["element_type"] == 1 else "FC",
             "Takım": team_name,
             "Fiyat (M$)": cost,
+            "Dk/Maç": mpg,
+            "Maç (Dev%)": f"{gp} (%{availability})",
             "Toplam FP": total_points,
             "FP Ort. (PPG)": ppg_val,
             "Form": form_val,
             "Value": value_ratio,
             "Fırsat": firsat_index,
-            "Maç (Dev%)": f"{gp} (%{availability})",
-            "_Mac_Siralama": gp,
-            "Dk/Maç": mpg
+            "_Mac_Siralama": gp
         })
         
     df = pd.DataFrame(player_list)
@@ -308,7 +308,7 @@ header_placeholder.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 4 LİDER KARTINI DOLDURMA (Saf Terminal Stili)
+# 4 LİDER KARTINI DOLDURMA
 # ==========================================
 if not sorted_table.empty:
     best_ppg_row = sorted_table.loc[sorted_table['FP Ort. (PPG)'].idxmax()]
@@ -361,26 +361,49 @@ else:
     metric_placeholder4.markdown("""<div class="esport-card" style="border-left-color: #38bdf8;"><div class="esport-label">S C O U T   P I C K</div><div class="esport-value">-</div></div>""", unsafe_allow_html=True)
 
 # ==========================================
+# HÜCRE RENKLENDİRME STYLER FONKSİYONLARI
+# ==========================================
+def style_ppg(val): return 'color: #c084fc; font-weight: 700;'
+def style_form(val): return 'color: #fb923c; font-weight: 700;'
+def style_value(val): return 'color: #34d399; font-weight: 700;'
+def style_firsat(val): return 'color: #38bdf8; font-weight: 700;'
+
+# ==========================================
 # ANA TABLO
 # ==========================================
 st.markdown("<br>", unsafe_allow_html=True)
 
-columns_to_show = ["Oyuncu", "Mevki", "Takım", "Fiyat (M$)", "Toplam FP", "FP Ort. (PPG)", "Form", "Value", "Fırsat", "Maç (Dev%)", "Dk/Maç"]
+# Görselindeki kusursuz sıralama kilitlendi
+columns_to_show = ["Oyuncu", "Mevki", "Takım", "Fiyat (M$)", "Dk/Maç", "Maç (Dev%)", "Toplam FP", "FP Ort. (PPG)", "Form", "Value", "Fırsat"]
 display_table = sorted_table[columns_to_show]
 
+# Sadece hedef 4 sütunun metinlerine kartlardaki eşleşen renkler atandı
+try:
+    styled_table = display_table.style\
+        .map(style_ppg, subset=['FP Ort. (PPG)'])\
+        .map(style_form, subset=['Form'])\
+        .map(style_value, subset=['Value'])\
+        .map(style_firsat, subset=['Fırsat'])
+except AttributeError:
+    styled_table = display_table.style\
+        .applymap(style_ppg, subset=['FP Ort. (PPG)'])\
+        .applymap(style_form, subset=['Form'])\
+        .applymap(style_value, subset=['Value'])\
+        .applymap(style_firsat, subset=['Fırsat'])
+
 st.dataframe(
-    display_table,
+    styled_table,
     use_container_width=True,
     hide_index=True,
     height=600,
     column_config={
         "Fiyat (M$)": st.column_config.NumberColumn(format="%.1f M$"),
+        "Dk/Maç": st.column_config.NumberColumn(format="%.1f"),
+        "Maç (Dev%)": st.column_config.TextColumn("Maç (Dev%)", width="small"),
         "Toplam FP": st.column_config.NumberColumn(format="%.1f"),
         "FP Ort. (PPG)": st.column_config.NumberColumn(format="%.1f"),
         "Form": st.column_config.NumberColumn("Form", format="%.1f"),
         "Value": st.column_config.NumberColumn("Value (FP/$)", format="%.2f"),
-        "Fırsat": st.column_config.NumberColumn("Fırsat", format="%.2f"),
-        "Maç (Dev%)": st.column_config.TextColumn("Maç (Dev%)", width="small"),
-        "Dk/Maç": st.column_config.NumberColumn(format="%.1f")
+        "Fırsat": st.column_config.NumberColumn("Fırsat", format="%.2f")
     }
 )
