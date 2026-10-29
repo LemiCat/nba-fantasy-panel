@@ -147,15 +147,101 @@ st.markdown("""
         margin-bottom: 2px;
         margin-top: 8px;
     }
+    
+    /* --- YENİ: BORSA / SKOR BANDI (TICKER) CSS --- */
+    .ticker-container {
+        width: 100%;
+        overflow: hidden;
+        background-color: rgba(15, 23, 42, 0.4); 
+        border-top: 1px solid rgba(56, 189, 248, 0.15);
+        border-bottom: 1px solid rgba(56, 189, 248, 0.15);
+        padding: 6px 0;
+        margin-top: 10px;
+        margin-bottom: 20px;
+        position: relative;
+        display: flex;
+        align-items: center;
+        border-radius: 2px;
+    }
+    .ticker-label {
+        background-color: #ef4444;
+        color: #ffffff;
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: 1px;
+        padding: 6px 14px;
+        position: absolute;
+        left: 0;
+        z-index: 10;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        border-right: 2px solid #0f172a;
+    }
+    .ticker-content {
+        white-space: nowrap;
+        animation: ticker 40s linear infinite;
+        color: #94a3b8;
+        font-family: monospace;
+        font-size: 14px;
+        font-weight: 600;
+        padding-left: 100%;
+    }
+    .ticker-content:hover {
+        animation-play-state: paused;
+    }
+    .score-hl {
+        color: #f8fafc;
+        font-weight: 800;
+        margin: 0 4px;
+    }
+    .live-dot {
+        color: #ef4444;
+        animation: pulse-animation 1.5s infinite;
+    }
+    @keyframes ticker {
+        0% { transform: translateX(0); }
+        100% { transform: translateX(-100%); }
+    }
     </style>
 """, unsafe_allow_html=True)
 
 @st.cache_data(show_spinner=True, ttl=900)
 def fetch_live_fantasy_data():
+    # 1. Ana verileri çek
     url = "https://tr.nbafantasy.nba.com/api/bootstrap-static/"
     res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=15).json()
     teams = {t["id"]: t.get("short_name", t["name"]) for t in res["teams"]}
     
+    # 2. Canlı/Sonuçlanmış maçları çek (Ticker için)
+    ticker_items = []
+    try:
+        url_fix = "https://tr.nbafantasy.nba.com/api/fixtures/"
+        res_fix = requests.get(url_fix, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10).json()
+        started_matches = [m for m in res_fix if m.get('started')]
+        
+        if not started_matches:
+            ticker_items.append("VERİ BEKLENİYOR / YENİ MAÇ YOK")
+        else:
+            # Sadece son 15 maçı al
+            for m in started_matches[-15:]:
+                h_team = teams.get(m.get('team_h'), "EV")
+                a_team = teams.get(m.get('team_a'), "DEP")
+                h_score = m.get('team_h_score') or 0
+                a_score = m.get('team_a_score') or 0
+                
+                if not m.get('finished'):
+                    status = "<span class='live-dot'>🔴</span>"
+                else:
+                    status = "✔️"
+                    
+                ticker_items.append(f"{status} {h_team} <span class='score-hl'>{h_score} - {a_score}</span> {a_team}")
+    except Exception:
+        ticker_items.append("CANLI SKOR BAĞLANTISI BEKLENİYOR...")
+        
+    ticker_html_text = " &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;✦&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ".join(ticker_items)
+    
+    # 3. Oyuncu istatistiklerini hesapla
     team_max_games = {team_name: 0 for team_name in teams.values()}
     for el in res["elements"]:
         if el.get("status") in ["u"]:
@@ -217,10 +303,10 @@ def fetch_live_fantasy_data():
         })
         
     df = pd.DataFrame(player_list)
-    return df
+    return df, ticker_html_text
 
 try:
-    df = fetch_live_fantasy_data()
+    df, ticker_text = fetch_live_fantasy_data()
 except Exception as e:
     st.error(f"Veri çekme hatası: {e}")
     st.stop()
@@ -354,30 +440,30 @@ if not sorted_table.empty:
         </div>
     </div>
     """, unsafe_allow_html=True)
-else:
-    metric_placeholder1.markdown("""<div class="esport-card" style="border-left-color: #a855f7;"><div class="esport-label">P P G   L E A D E R</div><div class="esport-value">-</div></div>""", unsafe_allow_html=True)
-    metric_placeholder2.markdown("""<div class="esport-card" style="border-left-color: #f97316;"><div class="esport-label">F O R M   L E A D E R</div><div class="esport-value">-</div></div>""", unsafe_allow_html=True)
-    metric_placeholder3.markdown("""<div class="esport-card" style="border-left-color: #10b981;"><div class="esport-label">V A L U E   L E A D E R</div><div class="esport-value">-</div></div>""", unsafe_allow_html=True)
-    metric_placeholder4.markdown("""<div class="esport-card" style="border-left-color: #38bdf8;"><div class="esport-label">S C O U T   P I C K</div><div class="esport-value">-</div></div>""", unsafe_allow_html=True)
 
 # ==========================================
-# HÜCRE RENKLENDİRME STYLER FONKSİYONLARI (ARKA PLAN EKLENDİ)
+# KAYAN SKOR BANDI (TICKER) EKLENTİSİ
 # ==========================================
-# rgba ile verilen soluk tonlar, hücrenin arka planını terminal vurgusuna dönüştürür.
-def style_ppg(val): 
-    return 'background-color: rgba(168, 85, 247, 0.15); color: #c084fc; font-weight: 700;'
-def style_form(val): 
-    return 'background-color: rgba(249, 115, 22, 0.15); color: #fb923c; font-weight: 700;'
-def style_value(val): 
-    return 'background-color: rgba(16, 185, 129, 0.15); color: #34d399; font-weight: 700;'
-def style_firsat(val): 
-    return 'background-color: rgba(56, 189, 248, 0.15); color: #7dd3fc; font-weight: 700;'
+st.markdown(f"""
+<div class="ticker-container">
+    <div class="ticker-label">NBA SKOR</div>
+    <div class="ticker-content">
+        {ticker_text}
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+# ==========================================
+# HÜCRE RENKLENDİRME FONKSİYONLARI
+# ==========================================
+def style_ppg(val): return 'background-color: rgba(168, 85, 247, 0.15); color: #c084fc; font-weight: 700;'
+def style_form(val): return 'background-color: rgba(249, 115, 22, 0.15); color: #fb923c; font-weight: 700;'
+def style_value(val): return 'background-color: rgba(16, 185, 129, 0.15); color: #34d399; font-weight: 700;'
+def style_firsat(val): return 'background-color: rgba(56, 189, 248, 0.15); color: #7dd3fc; font-weight: 700;'
 
 # ==========================================
 # ANA TABLO
 # ==========================================
-st.markdown("<br>", unsafe_allow_html=True)
-
 columns_to_show = ["Oyuncu", "Mevki", "Takım", "Fiyat (M$)", "Dk/Maç", "Maç (Dev%)", "Toplam FP", "FP Ort. (PPG)", "Form", "Value", "Fırsat"]
 display_table = sorted_table[columns_to_show]
 
