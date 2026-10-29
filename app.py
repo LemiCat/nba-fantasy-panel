@@ -8,7 +8,6 @@ st.set_page_config(page_title="NBA Fantasy Scout", layout="wide", page_icon="�
 # 2. Özel CSS: Arayüzü Uygulamaya (App) Dönüştür, Animasyonlar ve Ghost UI Ekle
 st.markdown("""
     <style>
-    /* Streamlit varsayılan menülerini gizle */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
@@ -19,7 +18,6 @@ st.markdown("""
         padding-bottom: 0rem !important;
     }
     
-    /* --- BAŞLIK, LOGO VE CANLI YAYIN ROZETİ --- */
     .custom-header-container {
         display: flex;
         align-items: center;
@@ -70,7 +68,7 @@ st.markdown("""
         100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); opacity: 1; }
     }
 
-    /* --- ESPOR TARZI METRİK KARTLARI --- */
+    /* Espor Kartları */
     .esport-card {
         border-left: 3px solid #38bdf8;
         padding-left: 14px;
@@ -105,11 +103,10 @@ st.markdown("""
         letter-spacing: 0.5px;
     }
 
-    /* --- YENİ: GHOST (HAYALET) FİLTRE PANELİ CSS --- */
-    /* Streamlit input kutularının dış çerçevelerini yok et, altını çizgi yap */
+    /* Ghost Filtre Paneli */
     div[data-baseweb="select"] > div, 
     div[data-baseweb="input"] > div {
-        background-color: rgba(255, 255, 255, 0.02) !important; 
+        background-color: rgba(255, 255, 255, 0.02) !important;
         border-top: none !important;
         border-left: none !important;
         border-right: none !important;
@@ -117,20 +114,15 @@ st.markdown("""
         border-radius: 0px !important;
         transition: border-color 0.2s ease;
     }
-    /* Kutuya tıklanınca (Focus) alt çizgi neon mavi parlasın */
     div[data-baseweb="select"] > div:focus-within, 
     div[data-baseweb="input"] > div:focus-within {
         border-bottom: 2px solid #38bdf8 !important;
         box-shadow: none !important;
     }
-    
-    /* Input içindeki yazıları beyazlat ve boyutlandır */
     div[data-baseweb="select"] div, div[data-baseweb="input"] input {
         color: #f8fafc !important;
         font-size: 13.5px !important;
     }
-
-    /* Filtre üst başlıklarını minimalist yap */
     .mini-label {
         color: #64748b;
         font-size: 10px;
@@ -148,16 +140,31 @@ def fetch_live_fantasy_data():
     res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=15).json()
     teams = {t["id"]: t.get("short_name", t["name"]) for t in res["teams"]}
     
+    # 1. AŞAMA: Takımların o ana kadar oynadığı maksimum maç sayısını bul (Team Games)
+    team_max_games = {team_name: 0 for team_name in teams.values()}
+    for el in res["elements"]:
+        if el.get("status") in ["u"]:
+            continue
+        team_name = teams.get(el["team"], "NBA")
+        tp_raw = float(el.get("total_points", 0.0) or 0.0)
+        tp = round(tp_raw / 10.0, 1)
+        ppg_raw = float(el.get("points_per_game", 0.0) or 0.0)
+        ppg = round(ppg_raw / 10.0, 1)
+        gp = int(round(tp / ppg)) if ppg > 0 else 0
+        
+        if gp > team_max_games[team_name]:
+            team_max_games[team_name] = gp
+
+    # 2. AŞAMA: Verileri işle ve hatalı Form değerini düzelt
     player_list = []
     for el in res["elements"]:
         if el.get("status") in ["u"]:
             continue
             
         full_name = f"{el['first_name']} {el['second_name']}"
+        team_name = teams.get(el["team"], "NBA")
         cost = float(el.get("now_cost", el.get("cost", 0))) / 10.0
         
-        # --- ASIL SORUNUN ÇÖZÜLDÜĞÜ YER ---
-        # Bütün "> 50" şartları silindi, veriler doğrudan doğru değere (10'a bölünerek) ulaşıyor.
         form_raw = float(el.get("form", 0.0) or 0.0)
         form_val = round(form_raw / 10.0, 1)
         
@@ -168,6 +175,13 @@ def fetch_live_fantasy_data():
         ppg_val = round(ppg_raw / 10.0, 1)
         
         gp = int(round(total_points / ppg_val)) if ppg_val > 0 else 0
+        team_games = team_max_games[team_name]
+
+        # --- SORUNUN ÇÖZÜMÜ: FORM DÜZELTME ALGORİTMASI ---
+        # Eğer oyuncu maç kaçırdıysa, API'nin takıma bölerek düşürdüğü Form değerini geri oranla
+        if gp > 0 and team_games > 0 and gp < team_games:
+            form_val = round(form_val * (team_games / gp), 1)
+            
         total_minutes = float(el.get("minutes", 0.0) or 0.0)
         mpg = round(total_minutes / gp, 1) if gp > 0 else 0.0
         value_ratio = round(total_points / cost, 2) if cost > 0 else 0.0
@@ -176,7 +190,7 @@ def fetch_live_fantasy_data():
         player_list.append({
             "Oyuncu": full_name,
             "Mevki": "BC" if el["element_type"] == 1 else "FC",
-            "Takım": teams.get(el["team"], "NBA"),
+            "Takım": team_name,
             "Fiyat (M$)": cost,
             "Toplam FP": total_points,
             "FP Ort. (PPG)": ppg_val,
@@ -208,7 +222,7 @@ except Exception as e:
     st.stop()
 
 # ==========================================
-# ANA EKRAN DÜZENİ: Sol %65, Sağ %35
+# ANA EKRAN DÜZENİ
 # ==========================================
 main_col_left, main_col_right = st.columns([1.5, 1]) 
 
