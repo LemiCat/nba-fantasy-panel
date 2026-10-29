@@ -149,7 +149,7 @@ st.markdown("""
         margin-top: 8px;
     }
     
-    /* --- YENİ: BORSA / SKOR BANDI (TICKER) CSS --- */
+    /* --- BORSA / SKOR BANDI (TICKER) CSS --- */
     .ticker-container {
         width: 100%;
         overflow: hidden;
@@ -181,7 +181,7 @@ st.markdown("""
     }
     .ticker-content {
         white-space: nowrap;
-        animation: ticker 45s linear infinite;
+        animation: ticker 50s linear infinite;
         color: #94a3b8;
         font-family: monospace;
         font-size: 14px;
@@ -230,64 +230,71 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 3. Takım Logoları Kütüphanesi (ESPN CDN)
+# 3. Takım Logoları Kütüphanesi
 TEAM_LOGOS = {
-    "ATL": "https://a.espncdn.com/i/teamlogos/nba/500/atl.png",
-    "BOS": "https://a.espncdn.com/i/teamlogos/nba/500/bos.png",
-    "BKN": "https://a.espncdn.com/i/teamlogos/nba/500/bkn.png",
-    "CHA": "https://a.espncdn.com/i/teamlogos/nba/500/cha.png",
-    "CHI": "https://a.espncdn.com/i/teamlogos/nba/500/chi.png",
-    "CLE": "https://a.espncdn.com/i/teamlogos/nba/500/cle.png",
-    "DAL": "https://a.espncdn.com/i/teamlogos/nba/500/dal.png",
-    "DEN": "https://a.espncdn.com/i/teamlogos/nba/500/den.png",
-    "DET": "https://a.espncdn.com/i/teamlogos/nba/500/det.png",
-    "GSW": "https://a.espncdn.com/i/teamlogos/nba/500/gs.png", 
-    "HOU": "https://a.espncdn.com/i/teamlogos/nba/500/hou.png",
-    "IND": "https://a.espncdn.com/i/teamlogos/nba/500/ind.png",
-    "LAC": "https://a.espncdn.com/i/teamlogos/nba/500/lac.png",
-    "LAL": "https://a.espncdn.com/i/teamlogos/nba/500/lal.png",
-    "MEM": "https://a.espncdn.com/i/teamlogos/nba/500/mem.png",
-    "MIA": "https://a.espncdn.com/i/teamlogos/nba/500/mia.png",
-    "MIL": "https://a.espncdn.com/i/teamlogos/nba/500/mil.png",
-    "MIN": "https://a.espncdn.com/i/teamlogos/nba/500/min.png",
-    "NOP": "https://a.espncdn.com/i/teamlogos/nba/500/no.png", 
-    "NYK": "https://a.espncdn.com/i/teamlogos/nba/500/ny.png", 
-    "OKC": "https://a.espncdn.com/i/teamlogos/nba/500/okc.png",
-    "ORL": "https://a.espncdn.com/i/teamlogos/nba/500/orl.png",
-    "PHI": "https://a.espncdn.com/i/teamlogos/nba/500/phi.png",
-    "PHX": "https://a.espncdn.com/i/teamlogos/nba/500/phx.png",
-    "POR": "https://a.espncdn.com/i/teamlogos/nba/500/por.png",
-    "SAC": "https://a.espncdn.com/i/teamlogos/nba/500/sac.png",
-    "SAS": "https://a.espncdn.com/i/teamlogos/nba/500/sa.png", 
-    "TOR": "https://a.espncdn.com/i/teamlogos/nba/500/tor.png",
-    "UTA": "https://a.espncdn.com/i/teamlogos/nba/500/utah.png", 
-    "WAS": "https://a.espncdn.com/i/teamlogos/nba/500/was.png"
+    "ATL": "https://a.espncdn.com/i/teamlogos/nba/500/atl.png", "BOS": "https://a.espncdn.com/i/teamlogos/nba/500/bos.png",
+    "BKN": "https://a.espncdn.com/i/teamlogos/nba/500/bkn.png", "CHA": "https://a.espncdn.com/i/teamlogos/nba/500/cha.png",
+    "CHI": "https://a.espncdn.com/i/teamlogos/nba/500/chi.png", "CLE": "https://a.espncdn.com/i/teamlogos/nba/500/cle.png",
+    "DAL": "https://a.espncdn.com/i/teamlogos/nba/500/dal.png", "DEN": "https://a.espncdn.com/i/teamlogos/nba/500/den.png",
+    "DET": "https://a.espncdn.com/i/teamlogos/nba/500/det.png", "GSW": "https://a.espncdn.com/i/teamlogos/nba/500/gs.png", 
+    "HOU": "https://a.espncdn.com/i/teamlogos/nba/500/hou.png", "IND": "https://a.espncdn.com/i/teamlogos/nba/500/ind.png",
+    "LAC": "https://a.espncdn.com/i/teamlogos/nba/500/lac.png", "LAL": "https://a.espncdn.com/i/teamlogos/nba/500/lal.png",
+    "MEM": "https://a.espncdn.com/i/teamlogos/nba/500/mem.png", "MIA": "https://a.espncdn.com/i/teamlogos/nba/500/mia.png",
+    "MIL": "https://a.espncdn.com/i/teamlogos/nba/500/mil.png", "MIN": "https://a.espncdn.com/i/teamlogos/nba/500/min.png",
+    "NOP": "https://a.espncdn.com/i/teamlogos/nba/500/no.png",  "NYK": "https://a.espncdn.com/i/teamlogos/nba/500/ny.png", 
+    "OKC": "https://a.espncdn.com/i/teamlogos/nba/500/okc.png", "ORL": "https://a.espncdn.com/i/teamlogos/nba/500/orl.png",
+    "PHI": "https://a.espncdn.com/i/teamlogos/nba/500/phi.png", "PHX": "https://a.espncdn.com/i/teamlogos/nba/500/phx.png",
+    "POR": "https://a.espncdn.com/i/teamlogos/nba/500/por.png", "SAC": "https://a.espncdn.com/i/teamlogos/nba/500/sac.png",
+    "SAS": "https://a.espncdn.com/i/teamlogos/nba/500/sa.png",  "TOR": "https://a.espncdn.com/i/teamlogos/nba/500/tor.png",
+    "UTA": "https://a.espncdn.com/i/teamlogos/nba/500/utah.png", "WAS": "https://a.espncdn.com/i/teamlogos/nba/500/was.png"
 }
+
+def get_nba_matchday(kickoff_str):
+    """Maç saatlerini Amerika yerel saatine çekerek aynı 'Maç Günü'nde olanları gruplar."""
+    try:
+        dt = datetime.datetime.strptime(kickoff_str, "%Y-%m-%dT%H:%M:%SZ")
+        # UTC'den ET'ye (yaklaşık -5 saat) dönüştürerek NBA takvim gününü buluyoruz
+        dt_et = dt - datetime.timedelta(hours=5)
+        return dt_et.strftime("%Y-%m-%d")
+    except Exception:
+        return ""
 
 @st.cache_data(show_spinner=True, ttl=900)
 def fetch_live_fantasy_data():
-    # 1. Ana verileri çek
     url = "https://tr.nbafantasy.nba.com/api/bootstrap-static/"
     res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=15).json()
     teams = {t["id"]: t.get("short_name", t["name"]) for t in res["teams"]}
     
-    # 2. Canlı/Sonuçlanmış maçları çek (Ticker için Gelişmiş Versiyon)
     ticker_html_text = ""
     try:
         url_fix = "https://tr.nbafantasy.nba.com/api/fixtures/"
         res_fix = requests.get(url_fix, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10).json()
         
-        finished_matches = [m for m in res_fix if m.get('finished')]
-        upcoming_matches = [m for m in res_fix if not m.get('finished')]
+        # Maçları zamana göre sırala
+        valid_fixtures = [m for m in res_fix if m.get('kickoff_time')]
+        valid_fixtures.sort(key=lambda x: x['kickoff_time'])
         
-        recent_finished = finished_matches[-10:] if finished_matches else []
-        next_upcoming = upcoming_matches[:10] if upcoming_matches else []
+        finished_matches = [m for m in valid_fixtures if m.get('finished')]
+        upcoming_matches = [m for m in valid_fixtures if not m.get('finished')]
         
+        recent_finished = []
+        next_upcoming = []
+        
+        # SADECE EN SON TAMAMLANAN MAÇ GÜNÜNÜ ÇEK (Örn: Dün Gece Oynanan Tüm Maçlar)
+        if finished_matches:
+            last_match_date = get_nba_matchday(finished_matches[-1]['kickoff_time'])
+            recent_finished = [m for m in finished_matches if get_nba_matchday(m['kickoff_time']) == last_match_date]
+            
+        # SADECE SIRADAKİ İLK MAÇ GÜNÜNÜ ÇEK (Örn: Bu Gece Oynanacak Tüm Maçlar)
+        if upcoming_matches:
+            first_match_date = get_nba_matchday(upcoming_matches[0]['kickoff_time'])
+            next_upcoming = [m for m in upcoming_matches if get_nba_matchday(m['kickoff_time']) == first_match_date]
+            
         ticker_items = []
         
-        # BÖLÜM 1: Biten Maçlar (Skorlar)
+        # BÖLÜM 1: Biten Maçlar (Skorlar - Tek Bir Maç Günü)
         if recent_finished:
-            ticker_items.append("<span class='ticker-category'>[ BİTEN MAÇLAR ]</span>")
+            ticker_items.append("<span class='ticker-category'>[ SON MAÇ GÜNÜ ]</span>")
             for m in recent_finished:
                 h_team = teams.get(m['team_h'], "EV")
                 a_team = teams.get(m['team_a'], "DEP")
@@ -299,16 +306,14 @@ def fetch_live_fantasy_data():
                 h_score = m.get('team_h_score', 0)
                 a_score = m.get('team_a_score', 0)
                 
-                # Format: LAL (Logo) 110 - 100 (Logo) BOS
                 ticker_items.append(f"{h_team} {h_img} <span class='score-hl'>{h_score} - {a_score}</span> {a_img} {a_team}")
         
-        # Araya şık bir ayırıcı koy
         if recent_finished and next_upcoming:
             ticker_items.append(" &nbsp;&nbsp;&nbsp;✦&nbsp;&nbsp;&nbsp; ")
             
-        # BÖLÜM 2: Gelecek Maçlar (Saatler)
+        # BÖLÜM 2: Gelecek Maçlar (Saatler - TSİ - Tek Bir Maç Günü)
         if next_upcoming:
-            ticker_items.append("<span class='ticker-category'>[ GELECEK MAÇLAR ]</span>")
+            ticker_items.append("<span class='ticker-category'>[ SIRADAKİ MAÇ GÜNÜ ]</span>")
             for m in next_upcoming:
                 h_team = teams.get(m['team_h'], "EV")
                 a_team = teams.get(m['team_a'], "DEP")
@@ -322,14 +327,12 @@ def fetch_live_fantasy_data():
                 time_str = "VS"
                 if kickoff:
                     try:
-                        # ISO 8601 (UTC) saatini parse edip Türkiye Saatine (+3) çevirme
                         dt = datetime.datetime.strptime(kickoff, "%Y-%m-%dT%H:%M:%SZ")
-                        dt = dt + datetime.timedelta(hours=3)
+                        dt = dt + datetime.timedelta(hours=3) # Gösterim için Türkiye Saatine (+3) çeviriyoruz
                         time_str = dt.strftime("%H:%M")
                     except Exception:
                         pass
                 
-                # Format: LAL (Logo) 04:30 (Logo) BOS
                 ticker_items.append(f"{h_team} {h_img} <span class='time-hl'>{time_str}</span> {a_img} {a_team}")
                 
         ticker_html_text = " &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ".join(ticker_items)
