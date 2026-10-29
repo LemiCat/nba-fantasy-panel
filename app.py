@@ -149,15 +149,19 @@ st.markdown("""
         margin-top: 8px;
     }
     
+    /* İkonik Siber Reset Butonu */
     div[data-testid="stButton"] button {
         background-color: rgba(239, 68, 68, 0.05) !important;
         border: 1px solid rgba(239, 68, 68, 0.3) !important;
         color: #ef4444 !important;
-        font-weight: 700 !important;
-        font-size: 11px !important;
-        letter-spacing: 1px;
+        font-weight: 900 !important;
+        font-size: 18px !important;
         transition: all 0.3s ease;
-        padding: 2px 0px;
+        padding: 0px !important;
+        height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
     div[data-testid="stButton"] button:hover {
         background-color: rgba(239, 68, 68, 0.2) !important;
@@ -420,6 +424,17 @@ except Exception as e:
     st.error(f"Veri çekme hatası: {e}")
     st.stop()
 
+# Reset Fonksiyonu - Callback
+min_p_val = float(df["Fiyat (M$)"].min()) if not df.empty else 5.0
+max_p_val = float(df["Fiyat (M$)"].max()) if not df.empty else 23.0
+
+def reset_filters():
+    st.session_state["search_player"] = []
+    st.session_state["filter_pos"] = "Tümü"
+    st.session_state["max_price"] = max_p_val
+    st.session_state["min_game"] = 0
+    st.session_state["min_min"] = 0.0
+
 header_placeholder = st.empty()
 main_col_left, main_col_right = st.columns([1.7, 1]) 
 
@@ -446,10 +461,8 @@ with main_col_right:
     with filt_col2:
         pos_filter = st.selectbox("Mevki", ["Tümü", "BC", "FC"], label_visibility="collapsed", key="filter_pos")
     
-    # Yeni: Buton için 4. Sütun Eklendi
-    num_col1, num_col2, num_col3, btn_col = st.columns([1, 1, 1, 0.7])
-    min_p_val = float(df["Fiyat (M$)"].min()) if not df.empty else 5.0
-    max_p_val = float(df["Fiyat (M$)"].max()) if not df.empty else 23.0
+    # İkon butonuna göre çok daraltılmış 4. Sütun (0.2 oran)
+    num_col1, num_col2, num_col3, btn_col = st.columns([1, 1, 1, 0.25])
     
     with num_col1:
         st.markdown('<div class="mini-label">MAX FİYAT</div>', unsafe_allow_html=True)
@@ -465,12 +478,7 @@ with main_col_right:
 
     with btn_col:
         st.markdown('<div class="mini-label" style="color:transparent; pointer-events:none;">X</div>', unsafe_allow_html=True)
-        if st.button("↺ SIFIRLA", use_container_width=True):
-            # Tıklandığında cache üzerindeki seçili anahtarları siler ve sayfayı anında yeniler
-            for key in ["search_player", "filter_pos", "max_price", "min_game", "min_min"]:
-                if key in st.session_state:
-                    del st.session_state[key]
-            st.rerun()
+        st.button("↺", use_container_width=True, on_click=reset_filters)
 
 # ==========================================
 # FİLTRELEME MANTIĞI
@@ -479,13 +487,14 @@ if selected_players:
     filtered = df[df["Oyuncu"].isin(selected_players)]
 else:
     filtered = df[
-        (df["Fiyat (M$)"] <= tavan_maas) & 
-        (df["_Mac_Siralama"] >= min_mac) &
-        (df["Dk/Maç"] >= min_mpg)
+        (df["Fiyat (M$)"] <= st.session_state.get("max_price", tavan_maas)) & 
+        (df["_Mac_Siralama"] >= st.session_state.get("min_game", min_mac)) &
+        (df["Dk/Maç"] >= st.session_state.get("min_min", min_mpg))
     ]
-    if pos_filter == "BC":
+    current_pos = st.session_state.get("filter_pos", pos_filter)
+    if current_pos == "BC":
         filtered = filtered[filtered["Mevki"] == "BC"]
-    elif pos_filter == "FC":
+    elif current_pos == "FC":
         filtered = filtered[filtered["Mevki"] == "FC"]
 
 sorted_table = filtered.sort_values(by="Fırsat", ascending=False)
