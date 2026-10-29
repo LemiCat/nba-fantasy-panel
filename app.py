@@ -1,6 +1,7 @@
 import requests
 import pandas as pd
 import streamlit as st
+import datetime
 
 # 1. Sayfa ve Tema Ayarları
 st.set_page_config(page_title="NBA Fantasy Scout", layout="wide", page_icon="🏀", initial_sidebar_state="collapsed")
@@ -180,12 +181,14 @@ st.markdown("""
     }
     .ticker-content {
         white-space: nowrap;
-        animation: ticker 40s linear infinite;
+        animation: ticker 45s linear infinite;
         color: #94a3b8;
         font-family: monospace;
         font-size: 14px;
         font-weight: 600;
         padding-left: 100%;
+        display: flex;
+        align-items: center;
     }
     .ticker-content:hover {
         animation-play-state: paused;
@@ -194,10 +197,31 @@ st.markdown("""
         color: #f8fafc;
         font-weight: 800;
         margin: 0 4px;
+        background: rgba(255,255,255,0.05);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 13px;
     }
-    .live-dot {
-        color: #ef4444;
-        animation: pulse-animation 1.5s infinite;
+    .time-hl {
+        color: #7dd3fc;
+        font-weight: 800;
+        margin: 0 4px;
+        background: rgba(56, 189, 248, 0.1);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 13px;
+    }
+    .ticker-logo {
+        height: 22px;
+        width: auto;
+        vertical-align: middle;
+        margin: 0 6px;
+    }
+    .ticker-category {
+        color: #e2e8f0;
+        font-weight: 800;
+        letter-spacing: 1px;
+        margin: 0 15px;
     }
     @keyframes ticker {
         0% { transform: translateX(0); }
@@ -206,6 +230,40 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# 3. Takım Logoları Kütüphanesi (ESPN CDN)
+TEAM_LOGOS = {
+    "ATL": "https://a.espncdn.com/i/teamlogos/nba/500/atl.png",
+    "BOS": "https://a.espncdn.com/i/teamlogos/nba/500/bos.png",
+    "BKN": "https://a.espncdn.com/i/teamlogos/nba/500/bkn.png",
+    "CHA": "https://a.espncdn.com/i/teamlogos/nba/500/cha.png",
+    "CHI": "https://a.espncdn.com/i/teamlogos/nba/500/chi.png",
+    "CLE": "https://a.espncdn.com/i/teamlogos/nba/500/cle.png",
+    "DAL": "https://a.espncdn.com/i/teamlogos/nba/500/dal.png",
+    "DEN": "https://a.espncdn.com/i/teamlogos/nba/500/den.png",
+    "DET": "https://a.espncdn.com/i/teamlogos/nba/500/det.png",
+    "GSW": "https://a.espncdn.com/i/teamlogos/nba/500/gs.png", 
+    "HOU": "https://a.espncdn.com/i/teamlogos/nba/500/hou.png",
+    "IND": "https://a.espncdn.com/i/teamlogos/nba/500/ind.png",
+    "LAC": "https://a.espncdn.com/i/teamlogos/nba/500/lac.png",
+    "LAL": "https://a.espncdn.com/i/teamlogos/nba/500/lal.png",
+    "MEM": "https://a.espncdn.com/i/teamlogos/nba/500/mem.png",
+    "MIA": "https://a.espncdn.com/i/teamlogos/nba/500/mia.png",
+    "MIL": "https://a.espncdn.com/i/teamlogos/nba/500/mil.png",
+    "MIN": "https://a.espncdn.com/i/teamlogos/nba/500/min.png",
+    "NOP": "https://a.espncdn.com/i/teamlogos/nba/500/no.png", 
+    "NYK": "https://a.espncdn.com/i/teamlogos/nba/500/ny.png", 
+    "OKC": "https://a.espncdn.com/i/teamlogos/nba/500/okc.png",
+    "ORL": "https://a.espncdn.com/i/teamlogos/nba/500/orl.png",
+    "PHI": "https://a.espncdn.com/i/teamlogos/nba/500/phi.png",
+    "PHX": "https://a.espncdn.com/i/teamlogos/nba/500/phx.png",
+    "POR": "https://a.espncdn.com/i/teamlogos/nba/500/por.png",
+    "SAC": "https://a.espncdn.com/i/teamlogos/nba/500/sac.png",
+    "SAS": "https://a.espncdn.com/i/teamlogos/nba/500/sa.png", 
+    "TOR": "https://a.espncdn.com/i/teamlogos/nba/500/tor.png",
+    "UTA": "https://a.espncdn.com/i/teamlogos/nba/500/utah.png", 
+    "WAS": "https://a.espncdn.com/i/teamlogos/nba/500/was.png"
+}
+
 @st.cache_data(show_spinner=True, ttl=900)
 def fetch_live_fantasy_data():
     # 1. Ana verileri çek
@@ -213,33 +271,71 @@ def fetch_live_fantasy_data():
     res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=15).json()
     teams = {t["id"]: t.get("short_name", t["name"]) for t in res["teams"]}
     
-    # 2. Canlı/Sonuçlanmış maçları çek (Ticker için)
-    ticker_items = []
+    # 2. Canlı/Sonuçlanmış maçları çek (Ticker için Gelişmiş Versiyon)
+    ticker_html_text = ""
     try:
         url_fix = "https://tr.nbafantasy.nba.com/api/fixtures/"
         res_fix = requests.get(url_fix, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10).json()
-        started_matches = [m for m in res_fix if m.get('started')]
         
-        if not started_matches:
-            ticker_items.append("VERİ BEKLENİYOR / YENİ MAÇ YOK")
-        else:
-            # Sadece son 15 maçı al
-            for m in started_matches[-15:]:
-                h_team = teams.get(m.get('team_h'), "EV")
-                a_team = teams.get(m.get('team_a'), "DEP")
-                h_score = m.get('team_h_score') or 0
-                a_score = m.get('team_a_score') or 0
+        finished_matches = [m for m in res_fix if m.get('finished')]
+        upcoming_matches = [m for m in res_fix if not m.get('finished')]
+        
+        recent_finished = finished_matches[-10:] if finished_matches else []
+        next_upcoming = upcoming_matches[:10] if upcoming_matches else []
+        
+        ticker_items = []
+        
+        # BÖLÜM 1: Biten Maçlar (Skorlar)
+        if recent_finished:
+            ticker_items.append("<span class='ticker-category'>[ BİTEN MAÇLAR ]</span>")
+            for m in recent_finished:
+                h_team = teams.get(m['team_h'], "EV")
+                a_team = teams.get(m['team_a'], "DEP")
+                h_logo = TEAM_LOGOS.get(h_team, "")
+                a_logo = TEAM_LOGOS.get(a_team, "")
                 
-                if not m.get('finished'):
-                    status = "<span class='live-dot'>🔴</span>"
-                else:
-                    status = "✔️"
-                    
-                ticker_items.append(f"{status} {h_team} <span class='score-hl'>{h_score} - {a_score}</span> {a_team}")
-    except Exception:
-        ticker_items.append("CANLI SKOR BAĞLANTISI BEKLENİYOR...")
+                h_img = f"<img src='{h_logo}' class='ticker-logo'>" if h_logo else ""
+                a_img = f"<img src='{a_logo}' class='ticker-logo'>" if a_logo else ""
+                h_score = m.get('team_h_score', 0)
+                a_score = m.get('team_a_score', 0)
+                
+                # Format: LAL (Logo) 110 - 100 (Logo) BOS
+                ticker_items.append(f"{h_team} {h_img} <span class='score-hl'>{h_score} - {a_score}</span> {a_img} {a_team}")
         
-    ticker_html_text = " &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;✦&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ".join(ticker_items)
+        # Araya şık bir ayırıcı koy
+        if recent_finished and next_upcoming:
+            ticker_items.append(" &nbsp;&nbsp;&nbsp;✦&nbsp;&nbsp;&nbsp; ")
+            
+        # BÖLÜM 2: Gelecek Maçlar (Saatler)
+        if next_upcoming:
+            ticker_items.append("<span class='ticker-category'>[ GELECEK MAÇLAR ]</span>")
+            for m in next_upcoming:
+                h_team = teams.get(m['team_h'], "EV")
+                a_team = teams.get(m['team_a'], "DEP")
+                h_logo = TEAM_LOGOS.get(h_team, "")
+                a_logo = TEAM_LOGOS.get(a_team, "")
+                
+                h_img = f"<img src='{h_logo}' class='ticker-logo'>" if h_logo else ""
+                a_img = f"<img src='{a_logo}' class='ticker-logo'>" if a_logo else ""
+                
+                kickoff = m.get('kickoff_time')
+                time_str = "VS"
+                if kickoff:
+                    try:
+                        # ISO 8601 (UTC) saatini parse edip Türkiye Saatine (+3) çevirme
+                        dt = datetime.datetime.strptime(kickoff, "%Y-%m-%dT%H:%M:%SZ")
+                        dt = dt + datetime.timedelta(hours=3)
+                        time_str = dt.strftime("%H:%M")
+                    except Exception:
+                        pass
+                
+                # Format: LAL (Logo) 04:30 (Logo) BOS
+                ticker_items.append(f"{h_team} {h_img} <span class='time-hl'>{time_str}</span> {a_img} {a_team}")
+                
+        ticker_html_text = " &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ".join(ticker_items)
+        
+    except Exception:
+        ticker_html_text = "CANLI SKOR BAĞLANTISI BEKLENİYOR..."
     
     # 3. Oyuncu istatistiklerini hesapla
     team_max_games = {team_name: 0 for team_name in teams.values()}
