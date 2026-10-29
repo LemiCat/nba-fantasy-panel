@@ -109,7 +109,7 @@ st.markdown("""
     /* Streamlit input kutularının dış çerçevelerini yok et, altını çizgi yap */
     div[data-baseweb="select"] > div, 
     div[data-baseweb="input"] > div {
-        background-color: rgba(255, 255, 255, 0.02) !important; /* Çok hafif bir saydamlık */
+        background-color: rgba(255, 255, 255, 0.02) !important; 
         border-top: none !important;
         border-left: none !important;
         border-right: none !important;
@@ -155,12 +155,18 @@ def fetch_live_fantasy_data():
             
         full_name = f"{el['first_name']} {el['second_name']}"
         cost = float(el.get("now_cost", el.get("cost", 0))) / 10.0
+        
+        # --- ASIL SORUNUN ÇÖZÜLDÜĞÜ YER ---
+        # Bütün "> 50" şartları silindi, veriler doğrudan doğru değere (10'a bölünerek) ulaşıyor.
         form_raw = float(el.get("form", 0.0) or 0.0)
-        form_val = round(form_raw / 10.0, 1) if form_raw > 50 else round(form_raw, 1)
+        form_val = round(form_raw / 10.0, 1)
+        
         tp_raw = float(el.get("total_points", 0.0) or 0.0)
-        total_points = round(tp_raw / 10.0, 1) if tp_raw > 0 else 0.0
+        total_points = round(tp_raw / 10.0, 1)
+        
         ppg_raw = float(el.get("points_per_game", 0.0) or 0.0)
-        ppg_val = round(ppg_raw / 10.0, 1) if ppg_raw > 50 else round(ppg_raw, 1)
+        ppg_val = round(ppg_raw / 10.0, 1)
+        
         gp = int(round(total_points / ppg_val)) if ppg_val > 0 else 0
         total_minutes = float(el.get("minutes", 0.0) or 0.0)
         mpg = round(total_minutes / gp, 1) if gp > 0 else 0.0
@@ -204,7 +210,6 @@ except Exception as e:
 # ==========================================
 # ANA EKRAN DÜZENİ: Sol %65, Sağ %35
 # ==========================================
-# Sağ tarafın iç içe girmemesi için oranı biraz daha dengeledik
 main_col_left, main_col_right = st.columns([1.5, 1]) 
 
 with main_col_left:
@@ -214,7 +219,7 @@ with main_col_left:
     metric_placeholder2 = metric_col2.empty()
     metric_placeholder3 = metric_col3.empty()
 
-# SAĞ TARAF: GHOST FİLTRE PANELİ (Kutusuz, Çizgili Terminal Tarzı)
+# SAĞ TARAF: GHOST FİLTRE PANELİ
 with main_col_right:
     st.markdown('<div class="esport-label" style="margin-bottom:12px; color:#38bdf8;">R A D A R   F I L T E R S</div>', unsafe_allow_html=True)
     
@@ -229,7 +234,6 @@ with main_col_right:
     with filt_col2:
         pos_filter = st.selectbox("Mevki", ["Tümü", "BC", "FC"], label_visibility="collapsed")
     
-    # Rakam girişleri için 3'lü ince sütun (Yan yana)
     num_col1, num_col2, num_col3 = st.columns(3)
     
     min_p_val = float(df["Fiyat (M$)"].min()) if not df.empty else 5.0
