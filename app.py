@@ -5,9 +5,10 @@ import streamlit as st
 # 1. Sayfa ve Tema Ayarları
 st.set_page_config(page_title="NBA Fantasy Scout", layout="wide", page_icon="🏀", initial_sidebar_state="collapsed")
 
-# 2. Özel CSS: Arayüzü Uygulamaya Dönüştür ve Ghost UI Ekle
+# 2. Özel CSS: Arayüzü Uygulamaya (App) Dönüştür, Animasyonlar ve Ghost UI Ekle
 st.markdown("""
     <style>
+    /* Streamlit varsayılan menülerini gizle */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
@@ -18,6 +19,7 @@ st.markdown("""
         padding-bottom: 0rem !important;
     }
     
+    /* --- BAŞLIK, LOGO VE CANLI YAYIN ROZETİ --- */
     .custom-header-container {
         display: flex;
         align-items: center;
@@ -68,7 +70,7 @@ st.markdown("""
         100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); opacity: 1; }
     }
 
-    /* Espor Kartları */
+    /* --- ESPOR TARZI METRİK KARTLARI --- */
     .esport-card {
         border-left: 3px solid #38bdf8;
         padding-left: 14px;
@@ -103,10 +105,11 @@ st.markdown("""
         letter-spacing: 0.5px;
     }
 
-    /* Ghost Filtre Paneli */
+    /* --- YENİ: GHOST (HAYALET) FİLTRE PANELİ CSS --- */
+    /* Streamlit input kutularının dış çerçevelerini yok et, altını çizgi yap */
     div[data-baseweb="select"] > div, 
     div[data-baseweb="input"] > div {
-        background-color: rgba(255, 255, 255, 0.02) !important;
+        background-color: rgba(255, 255, 255, 0.02) !important; /* Çok hafif bir saydamlık */
         border-top: none !important;
         border-left: none !important;
         border-right: none !important;
@@ -114,15 +117,20 @@ st.markdown("""
         border-radius: 0px !important;
         transition: border-color 0.2s ease;
     }
+    /* Kutuya tıklanınca (Focus) alt çizgi neon mavi parlasın */
     div[data-baseweb="select"] > div:focus-within, 
     div[data-baseweb="input"] > div:focus-within {
         border-bottom: 2px solid #38bdf8 !important;
         box-shadow: none !important;
     }
+    
+    /* Input içindeki yazıları beyazlat ve boyutlandır */
     div[data-baseweb="select"] div, div[data-baseweb="input"] input {
         color: #f8fafc !important;
         font-size: 13.5px !important;
     }
+
+    /* Filtre üst başlıklarını minimalist yap */
     .mini-label {
         color: #64748b;
         font-size: 10px;
@@ -140,86 +148,43 @@ def fetch_live_fantasy_data():
     res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=15).json()
     teams = {t["id"]: t.get("short_name", t["name"]) for t in res["teams"]}
     
-    raw_players = []
-    team_max_games = {team_name: 0 for team_name in teams.values()}
-    
-    # 1. TUR: Temizleme ve Maksimum Takım Maçı Bulma
+    player_list = []
     for el in res["elements"]:
         if el.get("status") in ["u"]:
             continue
             
-        total_minutes = float(el.get("minutes", 0.0) or 0.0)
-        # SIFIR DAKİKA İNFAZI
-        if total_minutes <= 0:
-            continue
-            
-        team_name = teams.get(el["team"], "NBA")
         full_name = f"{el['first_name']} {el['second_name']}"
         cost = float(el.get("now_cost", el.get("cost", 0))) / 10.0
-        
-        # --- MATEMATİK HATASI DÜZELTİLDİ: / 10.0 EKLENDİ ---
         form_raw = float(el.get("form", 0.0) or 0.0)
         form_val = round(form_raw / 10.0, 1) if form_raw > 50 else round(form_raw, 1)
-        
         tp_raw = float(el.get("total_points", 0.0) or 0.0)
         total_points = round(tp_raw / 10.0, 1) if tp_raw > 0 else 0.0
-        
         ppg_raw = float(el.get("points_per_game", 0.0) or 0.0)
         ppg_val = round(ppg_raw / 10.0, 1) if ppg_raw > 50 else round(ppg_raw, 1)
-        
         gp = int(round(total_points / ppg_val)) if ppg_val > 0 else 0
-        if gp == 0 and total_minutes > 0:
-            gp = 1
-            
-        # API BUG FİLTRESİ
-        if form_val > (ppg_val * 1.5):
-            form_val = ppg_val
-
-        if gp > team_max_games[team_name]:
-            team_max_games[team_name] = gp
-            
-        raw_players.append({
+        total_minutes = float(el.get("minutes", 0.0) or 0.0)
+        mpg = round(total_minutes / gp, 1) if gp > 0 else 0.0
+        value_ratio = round(total_points / cost, 2) if cost > 0 else 0.0
+        fp_per_min = round(total_points / total_minutes, 2) if total_minutes > 0 else 0.0
+        
+        player_list.append({
             "Oyuncu": full_name,
             "Mevki": "BC" if el["element_type"] == 1 else "FC",
-            "Takım": team_name,
+            "Takım": teams.get(el["team"], "NBA"),
             "Fiyat (M$)": cost,
             "Toplam FP": total_points,
             "FP Ort. (PPG)": ppg_val,
             "Form": form_val,
-            "Maç": gp,
-            "Toplam Dk": total_minutes
-        })
-        
-    # 2. TUR: Saf Verim ve Birleşik Sütun Hesabı
-    player_list = []
-    for p in raw_players:
-        gp = p["Maç"]
-        team_games = team_max_games[p["Takım"]]
-        
-        availability = round((gp / team_games) * 100) if team_games > 0 else 0
-        
-        mpg = round(p["Toplam Dk"] / gp, 1) if gp > 0 else 0.0
-        value_ratio = round(p["Toplam FP"] / p["Fiyat (M$)"], 2) if p["Fiyat (M$)"] > 0 else 0.0
-        fp_per_min = round(p["Toplam FP"] / p["Toplam Dk"], 2) if p["Toplam Dk"] > 0 else 0.0
-        
-        player_list.append({
-            "Oyuncu": p["Oyuncu"],
-            "Mevki": p["Mevki"],
-            "Takım": p["Takım"],
-            "Fiyat (M$)": p["Fiyat (M$)"],
-            "Toplam FP": p["Toplam FP"],
-            "FP Ort. (PPG)": p["FP Ort. (PPG)"],
-            "Form": p["Form"],
             "Value": value_ratio,
             "FP/Min": fp_per_min,
-            "Maç (Dev%)": f"{gp} (%{availability})",
-            "Dk/Maç": mpg,
-            "_Mac_Siralama": gp 
+            "Maç": gp,
+            "Dk/Maç": mpg
         })
         
     df = pd.DataFrame(player_list)
     return df
 
+# 3. YENİ BAŞLIK VE CANLI ROZETİ
 st.markdown("""
     <div class="custom-header-container">
         <img src="https://upload.wikimedia.org/wikipedia/en/0/03/National_Basketball_Association_logo.svg" class="nba-official-logo" alt="NBA Logo">
@@ -237,8 +202,9 @@ except Exception as e:
     st.stop()
 
 # ==========================================
-# ANA EKRAN DÜZENİ
+# ANA EKRAN DÜZENİ: Sol %65, Sağ %35
 # ==========================================
+# Sağ tarafın iç içe girmemesi için oranı biraz daha dengeledik
 main_col_left, main_col_right = st.columns([1.5, 1]) 
 
 with main_col_left:
@@ -248,6 +214,7 @@ with main_col_left:
     metric_placeholder2 = metric_col2.empty()
     metric_placeholder3 = metric_col3.empty()
 
+# SAĞ TARAF: GHOST FİLTRE PANELİ (Kutusuz, Çizgili Terminal Tarzı)
 with main_col_right:
     st.markdown('<div class="esport-label" style="margin-bottom:12px; color:#38bdf8;">R A D A R   F I L T E R S</div>', unsafe_allow_html=True)
     
@@ -262,7 +229,9 @@ with main_col_right:
     with filt_col2:
         pos_filter = st.selectbox("Mevki", ["Tümü", "BC", "FC"], label_visibility="collapsed")
     
+    # Rakam girişleri için 3'lü ince sütun (Yan yana)
     num_col1, num_col2, num_col3 = st.columns(3)
+    
     min_p_val = float(df["Fiyat (M$)"].min()) if not df.empty else 5.0
     max_p_val = float(df["Fiyat (M$)"].max()) if not df.empty else 23.0
     
@@ -286,7 +255,7 @@ if selected_players:
 else:
     filtered = df[
         (df["Fiyat (M$)"] <= tavan_maas) & 
-        (df["_Mac_Siralama"] >= min_mac) &
+        (df["Maç"] >= min_mac) &
         (df["Dk/Maç"] >= min_mpg)
     ]
     if pos_filter == "BC":
@@ -297,7 +266,7 @@ else:
 sorted_table = filtered.sort_values(by="Value", ascending=False)
 
 # ==========================================
-# ESPOR KARTLARI
+# ESPOR KARTLARINI DOLDURMA
 # ==========================================
 html_m1 = f"""
 <div class="esport-card" style="border-left-color: #64748b;">
@@ -340,12 +309,8 @@ else:
 # ANA TABLO
 # ==========================================
 st.markdown("<br>", unsafe_allow_html=True)
-
-columns_to_show = ["Oyuncu", "Mevki", "Takım", "Fiyat (M$)", "Toplam FP", "FP Ort. (PPG)", "Form", "Value", "FP/Min", "Maç (Dev%)", "Dk/Maç"]
-display_table = sorted_table[columns_to_show]
-
 st.dataframe(
-    display_table,
+    sorted_table,
     use_container_width=True,
     hide_index=True,
     height=600,
@@ -356,7 +321,7 @@ st.dataframe(
         "Form": st.column_config.NumberColumn("🔥 Form", format="%.1f"),
         "Value": st.column_config.NumberColumn("💎 Value (FP/$)", format="%.2f"),
         "FP/Min": st.column_config.NumberColumn("⚡ FP/Min", format="%.2f"),
-        "Maç (Dev%)": st.column_config.TextColumn("Maç (Dev%)", width="small"),
+        "Maç": st.column_config.NumberColumn(format="%d"),
         "Dk/Maç": st.column_config.NumberColumn(format="%.1f")
     }
 )
