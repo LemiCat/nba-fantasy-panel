@@ -14,9 +14,20 @@ st.markdown("""
     header {visibility: hidden;}
     [data-testid="collapsedControl"] {display: none;}
     
+    /* --- YENİ: GECE PARKESİ (KARANLIK NBA STADYUMU) ARKA PLANI --- */
+    .stApp {
+        /* Yüksek çözünürlüklü stadyum görseli ve üzerine %90 karanlık siber filtre */
+        background-image: linear-gradient(rgba(15, 23, 42, 0.90), rgba(10, 15, 30, 0.96)), url("https://images.unsplash.com/photo-1518063319789-7217e6706b04?q=80&w=2500&auto=format&fit=crop");
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+    }
+    
+    /* Tablo ve blokların arka planlarının sahaya uyum sağlaması için şeffaflık */
     .block-container {
         padding-top: 1.5rem !important;
         padding-bottom: 0rem !important;
+        background: transparent !important;
     }
     
     /* --- BAŞLIK, LOGO VE ROZETLER --- */
@@ -37,6 +48,7 @@ st.markdown("""
         font-weight: 800;
         line-height: 1.2;
         letter-spacing: -0.5px;
+        text-shadow: 0px 4px 15px rgba(0,0,0,0.5); /* Yazıların arka planda kaybolmaması için gölge */
     }
     .header-thin {
         font-weight: 300;
@@ -55,6 +67,7 @@ st.markdown("""
         font-weight: 800;
         letter-spacing: 0.5px;
         margin-left: 20px; 
+        backdrop-filter: blur(4px); /* Cam efekti */
     }
     .blinking-dot {
         width: 8px;
@@ -73,15 +86,16 @@ st.markdown("""
     .player-count-badge {
         display: inline-flex;
         align-items: center;
-        background-color: rgba(148, 163, 184, 0.08); 
-        border: 1px solid rgba(148, 163, 184, 0.2);
-        color: #94a3b8; 
+        background-color: rgba(148, 163, 184, 0.15); 
+        border: 1px solid rgba(148, 163, 184, 0.3);
+        color: #cbd5e1; 
         padding: 4px 12px;
         border-radius: 20px;
         font-size: 12px;
         font-weight: 600;
         letter-spacing: 1px;
         margin-left: 10px; 
+        backdrop-filter: blur(4px);
     }
 
     /* --- 4'LÜ ESPOR METRİK KARTLARI --- */
@@ -90,6 +104,10 @@ st.markdown("""
         padding-left: 12px;
         margin-top: 5px;
         margin-bottom: 15px;
+        background: rgba(15, 23, 42, 0.4); /* Kartların arkasını hafif karartır */
+        padding: 10px;
+        border-radius: 0 8px 8px 0;
+        backdrop-filter: blur(2px);
     }
     .esport-label {
         color: #94a3b8;
@@ -123,13 +141,14 @@ st.markdown("""
     /* --- GHOST FİLTRE PANELİ VE RESET BUTONU CSS --- */
     div[data-baseweb="select"] > div, 
     div[data-baseweb="input"] > div {
-        background-color: rgba(255, 255, 255, 0.02) !important;
+        background-color: rgba(15, 23, 42, 0.5) !important;
         border-top: none !important;
         border-left: none !important;
         border-right: none !important;
-        border-bottom: 2px solid #1e293b !important;
+        border-bottom: 2px solid rgba(148, 163, 184, 0.3) !important;
         border-radius: 0px !important;
         transition: border-color 0.2s ease;
+        backdrop-filter: blur(4px);
     }
     div[data-baseweb="select"] > div:focus-within, 
     div[data-baseweb="input"] > div:focus-within {
@@ -141,7 +160,7 @@ st.markdown("""
         font-size: 13.5px !important;
     }
     .mini-label {
-        color: #64748b;
+        color: #94a3b8;
         font-size: 10px;
         font-weight: 700;
         letter-spacing: 1.5px;
@@ -149,10 +168,9 @@ st.markdown("""
         margin-top: 8px;
     }
     
-    /* İkonik Siber Reset Butonu */
     div[data-testid="stButton"] button {
-        background-color: rgba(239, 68, 68, 0.05) !important;
-        border: 1px solid rgba(239, 68, 68, 0.3) !important;
+        background-color: rgba(239, 68, 68, 0.1) !important;
+        border: 1px solid rgba(239, 68, 68, 0.4) !important;
         color: #ef4444 !important;
         font-weight: 900 !important;
         font-size: 18px !important;
@@ -162,10 +180,11 @@ st.markdown("""
         display: flex;
         align-items: center;
         justify-content: center;
+        backdrop-filter: blur(4px);
     }
     div[data-testid="stButton"] button:hover {
-        background-color: rgba(239, 68, 68, 0.2) !important;
-        border: 1px solid rgba(239, 68, 68, 0.8) !important;
+        background-color: rgba(239, 68, 68, 0.3) !important;
+        border: 1px solid rgba(239, 68, 68, 0.9) !important;
         color: #ffffff !important;
     }
     div[data-testid="stButton"] button:active {
@@ -177,16 +196,17 @@ st.markdown("""
     .ticker-container {
         width: 100%;
         overflow: hidden;
-        background-color: rgba(15, 23, 42, 0.4); 
-        border-top: 1px solid rgba(56, 189, 248, 0.15);
-        border-bottom: 1px solid rgba(56, 189, 248, 0.15);
+        background-color: rgba(15, 23, 42, 0.6); 
+        border-top: 1px solid rgba(56, 189, 248, 0.2);
+        border-bottom: 1px solid rgba(56, 189, 248, 0.2);
         padding: 6px 0;
         margin-top: 10px;
         margin-bottom: 20px;
         position: relative;
         display: flex;
         align-items: center;
-        border-radius: 2px;
+        border-radius: 4px;
+        backdrop-filter: blur(6px);
     }
     .ticker-label {
         background-color: #ef4444;
@@ -206,7 +226,7 @@ st.markdown("""
     .ticker-content {
         white-space: nowrap;
         animation: ticker 50s linear infinite;
-        color: #94a3b8;
+        color: #e2e8f0;
         font-family: monospace;
         font-size: 14px;
         font-weight: 600;
@@ -218,19 +238,19 @@ st.markdown("""
         animation-play-state: paused;
     }
     .score-hl {
-        color: #f8fafc;
-        font-weight: 800;
+        color: #ffffff;
+        font-weight: 900;
         margin: 0 4px;
-        background: rgba(255,255,255,0.05);
+        background: rgba(255,255,255,0.1);
         padding: 2px 6px;
         border-radius: 4px;
         font-size: 13px;
     }
     .time-hl {
         color: #7dd3fc;
-        font-weight: 800;
+        font-weight: 900;
         margin: 0 4px;
-        background: rgba(56, 189, 248, 0.1);
+        background: rgba(56, 189, 248, 0.15);
         padding: 2px 6px;
         border-radius: 4px;
         font-size: 13px;
@@ -242,7 +262,7 @@ st.markdown("""
         margin: 0 6px;
     }
     .ticker-category {
-        color: #e2e8f0;
+        color: #94a3b8;
         font-weight: 800;
         letter-spacing: 1px;
         margin: 0 15px;
@@ -424,7 +444,7 @@ except Exception as e:
     st.error(f"Veri çekme hatası: {e}")
     st.stop()
 
-# Reset Fonksiyonu - Callback
+# Reset Fonksiyonu
 min_p_val = float(df["Fiyat (M$)"].min()) if not df.empty else 5.0
 max_p_val = float(df["Fiyat (M$)"].max()) if not df.empty else 23.0
 
@@ -447,7 +467,7 @@ with main_col_left:
     metric_placeholder4 = metric_col4.empty()
 
 with main_col_right:
-    st.markdown('<div class="esport-label" style="margin-bottom:12px; color:#38bdf8;">R A D A R   F I L T E R S</div>', unsafe_allow_html=True)
+    st.markdown('<div class="esport-label" style="margin-bottom:12px; color:#38bdf8; text-shadow: 0px 2px 4px rgba(0,0,0,0.5);">R A D A R   F I L T E R S</div>', unsafe_allow_html=True)
     
     filt_col1, filt_col2 = st.columns([1.5, 1])
     with filt_col1:
@@ -461,7 +481,6 @@ with main_col_right:
     with filt_col2:
         pos_filter = st.selectbox("Mevki", ["Tümü", "BC", "FC"], label_visibility="collapsed", key="filter_pos")
     
-    # İkon butonuna göre çok daraltılmış 4. Sütun (0.2 oran)
     num_col1, num_col2, num_col3, btn_col = st.columns([1, 1, 1, 0.25])
     
     with num_col1:
