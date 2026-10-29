@@ -5,7 +5,7 @@ import streamlit as st
 # 1. Sayfa ve Tema Ayarları
 st.set_page_config(page_title="NBA Fantasy Scout", layout="wide", page_icon="🏀", initial_sidebar_state="collapsed")
 
-# 2. Özel CSS: Arayüzü Uygulamaya (App) Dönüştür, Animasyonlar ve Ghost UI Ekle
+# 2. Özel CSS
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
@@ -143,11 +143,13 @@ def fetch_live_fantasy_data():
     raw_players = []
     team_max_games = {team_name: 0 for team_name in teams.values()}
     
+    # 1. TUR: Temizleme ve Maksimum Takım Maçı Bulma
     for el in res["elements"]:
         if el.get("status") in ["u"]:
             continue
             
         total_minutes = float(el.get("minutes", 0.0) or 0.0)
+        # SIFIR DAKİKA İNFAZI
         if total_minutes <= 0:
             continue
             
@@ -168,6 +170,7 @@ def fetch_live_fantasy_data():
         if gp == 0 and total_minutes > 0:
             gp = 1
             
+        # API BUG FİLTRESİ
         if form_val > (ppg_val * 1.5):
             form_val = ppg_val
 
@@ -186,16 +189,18 @@ def fetch_live_fantasy_data():
             "Toplam Dk": total_minutes
         })
         
+    # 2. TUR: YENİ "FIRSAT (FORM/$)" SÜTUNU HESAPLAMASI
     player_list = []
     for p in raw_players:
         gp = p["Maç"]
         team_games = team_max_games[p["Takım"]]
         
         availability = round((gp / team_games) * 100) if team_games > 0 else 0
-        mpg = round(p["Toplam Dk"] / gp, 1) if gp > 0 else 0.0
         
-        # --- Value ve Fırsat Hesaplamaları (PPG Bazlı) ---
-        value_ratio = round(p["FP Ort. (PPG)"] / p["Fiyat (M$)"], 2) if p["Fiyat (M$)"] > 0 else 0.0
+        mpg = round(p["Toplam Dk"] / gp, 1) if gp > 0 else 0.0
+        value_ratio = round(p["Toplam FP"] / p["Fiyat (M$)"], 2) if p["Fiyat (M$)"] > 0 else 0.0
+        
+        # --- YENİ VERİ: Fırsat Endeksi (Anlık Kârlılık) ---
         firsat_index = round(p["Form"] / p["Fiyat (M$)"], 2) if p["Fiyat (M$)"] > 0 else 0.0
         
         player_list.append({
@@ -206,8 +211,8 @@ def fetch_live_fantasy_data():
             "Toplam FP": p["Toplam FP"],
             "FP Ort. (PPG)": p["FP Ort. (PPG)"],
             "Form": p["Form"],
-            "Value": value_ratio,
-            "Fırsat": firsat_index, 
+            "Value (FP/$)": value_ratio,
+            "Fırsat": firsat_index,  # FP/Min yerine eklendi
             "Maç (Dev%)": f"{gp} (%{availability})",
             "Dk/Maç": mpg,
             "_Mac_Siralama": gp 
@@ -232,6 +237,9 @@ except Exception as e:
     st.error(f"Veri çekme hatası: {e}")
     st.stop()
 
+# ==========================================
+# ANA EKRAN DÜZENİ
+# ==========================================
 main_col_left, main_col_right = st.columns([1.5, 1]) 
 
 with main_col_left:
@@ -271,6 +279,9 @@ with main_col_right:
         st.markdown('<div class="mini-label">MİN DK/MAÇ</div>', unsafe_allow_html=True)
         min_mpg = st.number_input("Min Dk/Maç", min_value=0.0, max_value=48.0, value=0.0, step=1.0, label_visibility="collapsed")
 
+# ==========================================
+# FİLTRELEME MANTIĞI
+# ==========================================
 if selected_players:
     filtered = df[df["Oyuncu"].isin(selected_players)]
 else:
@@ -284,8 +295,11 @@ else:
     elif pos_filter == "FC":
         filtered = filtered[filtered["Mevki"] == "FC"]
 
-sorted_table = filtered.sort_values(by="Fırsat", ascending=False)
+sorted_table = filtered.sort_values(by="Fırsat", ascending=False) # Artık yeni eklenen Fırsat'a göre sıralanıyor
 
+# ==========================================
+# ESPOR KARTLARI
+# ==========================================
 html_m1 = f"""
 <div class="esport-card" style="border-left-color: #64748b;">
     <div class="esport-label">R A D A R   A C T I V E</div>
@@ -298,12 +312,12 @@ html_m1 = f"""
 metric_placeholder1.markdown(html_m1, unsafe_allow_html=True)
 
 if not sorted_table.empty:
-    best_value_row = sorted_table.sort_values(by="Value", ascending=False).iloc[0]
+    best_value_row = sorted_table.sort_values(by="Value (FP/$)", ascending=False).iloc[0]
     html_m2 = f"""
     <div class="esport-card" style="border-left-color: #38bdf8;">
         <div class="esport-label">S C O U T   P I C K</div>
         <div class="esport-value">{best_value_row['Oyuncu']}</div>
-        <div class="esport-pill">↑ {best_value_row['Value']:.2f} PPG/$</div>
+        <div class="esport-pill">↑ {best_value_row['Value (FP/$)']:.2f} FP/$</div>
     </div>
     """
     metric_placeholder2.markdown(html_m2, unsafe_allow_html=True)
@@ -323,9 +337,13 @@ else:
     metric_placeholder2.markdown("""<div class="esport-card" style="border-left-color: #38bdf8;"><div class="esport-label">S C O U T   P I C K</div><div class="esport-value">-</div></div>""", unsafe_allow_html=True)
     metric_placeholder3.markdown("""<div class="esport-card" style="border-left-color: #f97316;"><div class="esport-label">F O R M   L E A D E R</div><div class="esport-value">-</div></div>""", unsafe_allow_html=True)
 
+# ==========================================
+# ANA TABLO
+# ==========================================
 st.markdown("<br>", unsafe_allow_html=True)
 
-columns_to_show = ["Oyuncu", "Mevki", "Takım", "Fiyat (M$)", "Toplam FP", "FP Ort. (PPG)", "Form", "Value", "Fırsat", "Maç (Dev%)", "Dk/Maç"]
+# FP/Min sütununu kaldırıp Fırsat sütununu ekledik
+columns_to_show = ["Oyuncu", "Mevki", "Takım", "Fiyat (M$)", "Toplam FP", "FP Ort. (PPG)", "Form", "Value (FP/$)", "Fırsat", "Maç (Dev%)", "Dk/Maç"]
 display_table = sorted_table[columns_to_show]
 
 st.dataframe(
@@ -338,8 +356,8 @@ st.dataframe(
         "Toplam FP": st.column_config.NumberColumn(format="%.1f"),
         "FP Ort. (PPG)": st.column_config.NumberColumn(format="%.1f"),
         "Form": st.column_config.NumberColumn("🔥 Form", format="%.1f"),
-        "Value": st.column_config.NumberColumn("💎 Value (PPG/$)", format="%.2f"),
-        "Fırsat": st.column_config.NumberColumn("🎯 Fırsat", format="%.2f"),
+        "Value (FP/$)": st.column_config.NumberColumn("💎 Value", format="%.2f"),
+        "Fırsat": st.column_config.NumberColumn("🎯 Fırsat", format="%.2f"), # Yeni Fırsat Sütunu Eklendi
         "Maç (Dev%)": st.column_config.TextColumn("Maç (Dev%)", width="small"),
         "Dk/Maç": st.column_config.NumberColumn(format="%.1f")
     }
