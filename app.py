@@ -8,6 +8,7 @@ st.set_page_config(page_title="NBA Fantasy Scout", layout="wide", page_icon="�
 # 2. Özel CSS: Arayüzü Uygulamaya (App) Dönüştür, Animasyonlar ve Ghost UI Ekle
 st.markdown("""
     <style>
+    /* Streamlit varsayılan menülerini gizle */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
@@ -18,6 +19,7 @@ st.markdown("""
         padding-bottom: 0rem !important;
     }
     
+    /* --- BAŞLIK, LOGO VE CANLI YAYIN ROZETİ --- */
     .custom-header-container {
         display: flex;
         align-items: center;
@@ -68,7 +70,7 @@ st.markdown("""
         100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); opacity: 1; }
     }
 
-    /* Espor Kartları */
+    /* --- ESPOR TARZI METRİK KARTLARI --- */
     .esport-card {
         border-left: 3px solid #38bdf8;
         padding-left: 14px;
@@ -103,7 +105,7 @@ st.markdown("""
         letter-spacing: 0.5px;
     }
 
-    /* Ghost Filtre Paneli */
+    /* --- YENİ: GHOST (HAYALET) FİLTRE PANELİ CSS --- */
     div[data-baseweb="select"] > div, 
     div[data-baseweb="input"] > div {
         background-color: rgba(255, 255, 255, 0.02) !important;
@@ -140,7 +142,7 @@ def fetch_live_fantasy_data():
     res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=15).json()
     teams = {t["id"]: t.get("short_name", t["name"]) for t in res["teams"]}
     
-    # 1. AŞAMA: Takımların o ana kadar oynadığı maksimum maç sayısını bul (Team Games)
+    # 1. AŞAMA: Sadece takımların oynadığı maksimum maç sayısını tespit et
     team_max_games = {team_name: 0 for team_name in teams.values()}
     for el in res["elements"]:
         if el.get("status") in ["u"]:
@@ -154,8 +156,8 @@ def fetch_live_fantasy_data():
         
         if gp > team_max_games[team_name]:
             team_max_games[team_name] = gp
-
-    # 2. AŞAMA: Verileri işle ve hatalı Form değerini düzelt
+            
+    # 2. AŞAMA: Hiçbir veriyi silmeden veya bozmadan oyuncu listesini oluştur
     player_list = []
     for el in res["elements"]:
         if el.get("status") in ["u"]:
@@ -175,17 +177,14 @@ def fetch_live_fantasy_data():
         ppg_val = round(ppg_raw / 10.0, 1)
         
         gp = int(round(total_points / ppg_val)) if ppg_val > 0 else 0
-        team_games = team_max_games[team_name]
-
-        # --- SORUNUN ÇÖZÜMÜ: FORM DÜZELTME ALGORİTMASI ---
-        # Eğer oyuncu maç kaçırdıysa, API'nin takıma bölerek düşürdüğü Form değerini geri oranla
-        if gp > 0 and team_games > 0 and gp < team_games:
-            form_val = round(form_val * (team_games / gp), 1)
-            
         total_minutes = float(el.get("minutes", 0.0) or 0.0)
         mpg = round(total_minutes / gp, 1) if gp > 0 else 0.0
         value_ratio = round(total_points / cost, 2) if cost > 0 else 0.0
         fp_per_min = round(total_points / total_minutes, 2) if total_minutes > 0 else 0.0
+        
+        # Sütun için Devamlılık Yüzdesini hesapla
+        t_games = team_max_games[team_name]
+        availability = int(round((gp / t_games) * 100)) if t_games > 0 else 0
         
         player_list.append({
             "Oyuncu": full_name,
@@ -197,7 +196,8 @@ def fetch_live_fantasy_data():
             "Form": form_val,
             "Value": value_ratio,
             "FP/Min": fp_per_min,
-            "Maç": gp,
+            "Maç": f"{gp} (%{availability})", # Yeni Formatlı Metin
+            "_Mac_Sayisi": gp,                 # Filtrenin bozulmaması için arka plan verisi
             "Dk/Maç": mpg
         })
         
@@ -222,7 +222,7 @@ except Exception as e:
     st.stop()
 
 # ==========================================
-# ANA EKRAN DÜZENİ
+# ANA EKRAN DÜZENİ: Sol %65, Sağ %35
 # ==========================================
 main_col_left, main_col_right = st.columns([1.5, 1]) 
 
@@ -273,7 +273,7 @@ if selected_players:
 else:
     filtered = df[
         (df["Fiyat (M$)"] <= tavan_maas) & 
-        (df["Maç"] >= min_mac) &
+        (df["_Mac_Sayisi"] >= min_mac) &
         (df["Dk/Maç"] >= min_mpg)
     ]
     if pos_filter == "BC":
@@ -327,8 +327,12 @@ else:
 # ANA TABLO
 # ==========================================
 st.markdown("<br>", unsafe_allow_html=True)
+
+# Ekranda gizli _Mac_Sayisi sütununu çıkartarak tabloyu render ediyoruz
+display_table = sorted_table.drop(columns=["_Mac_Sayisi"])
+
 st.dataframe(
-    sorted_table,
+    display_table,
     use_container_width=True,
     hide_index=True,
     height=600,
@@ -339,7 +343,7 @@ st.dataframe(
         "Form": st.column_config.NumberColumn("🔥 Form", format="%.1f"),
         "Value": st.column_config.NumberColumn("💎 Value (FP/$)", format="%.2f"),
         "FP/Min": st.column_config.NumberColumn("⚡ FP/Min", format="%.2f"),
-        "Maç": st.column_config.NumberColumn(format="%d"),
+        "Maç": st.column_config.TextColumn("Maç (Dev%)", width="small"),
         "Dk/Maç": st.column_config.NumberColumn(format="%.1f")
     }
 )
