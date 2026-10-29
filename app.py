@@ -18,6 +18,7 @@ st.markdown("""
         padding-bottom: 0rem !important;
     }
     
+    /* --- BAŞLIK, LOGO VE ROZETLER --- */
     .custom-header-container {
         display: flex;
         align-items: center;
@@ -67,43 +68,59 @@ st.markdown("""
         70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); opacity: 0.4; }
         100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); opacity: 1; }
     }
+    
+    /* YENİ: Minimalist Aktif Oyuncu Rozeti */
+    .player-count-badge {
+        display: inline-flex;
+        align-items: center;
+        background-color: rgba(148, 163, 184, 0.08); 
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        color: #94a3b8; 
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 1px;
+        margin-left: 10px; 
+    }
 
-    /* Espor Kartları */
+    /* --- 4'LÜ ESPOR METRİK KARTLARI --- */
     .esport-card {
         border-left: 3px solid #38bdf8;
-        padding-left: 14px;
+        padding-left: 12px;
         margin-top: 5px;
         margin-bottom: 15px;
     }
     .esport-label {
         color: #94a3b8;
-        font-size: 11px;
+        font-size: 10px; /* 4 sütuna sığması için küçültüldü */
         font-weight: 700;
-        letter-spacing: 2.5px;
+        letter-spacing: 2.0px;
         margin-bottom: 4px;
     }
     .esport-value {
         color: #ffffff;
-        font-size: 28px;
+        font-size: 20px; /* İsimlerin alt satıra taşmaması için optimize edildi */
         font-weight: 900;
         letter-spacing: -0.5px;
         margin-bottom: 8px;
         line-height: 1.1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     .esport-pill {
         display: inline-flex;
         align-items: center;
-        background-color: rgba(34, 197, 94, 0.15); 
-        color: #4ade80;
-        border: 1px solid rgba(34, 197, 94, 0.3);
-        padding: 3px 10px;
+        padding: 2px 8px;
         border-radius: 12px;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 700;
         letter-spacing: 0.5px;
+        border: 1px solid;
     }
 
-    /* Ghost Filtre Paneli */
+    /* --- GHOST FİLTRE PANELİ CSS --- */
     div[data-baseweb="select"] > div, 
     div[data-baseweb="input"] > div {
         background-color: rgba(255, 255, 255, 0.02) !important;
@@ -140,7 +157,6 @@ def fetch_live_fantasy_data():
     res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=15).json()
     teams = {t["id"]: t.get("short_name", t["name"]) for t in res["teams"]}
     
-    # 1. AŞAMA: Takımların o ana kadar oynadığı maksimum maç sayısını bul (Team Games)
     team_max_games = {team_name: 0 for team_name in teams.values()}
     for el in res["elements"]:
         if el.get("status") in ["u"]:
@@ -155,7 +171,6 @@ def fetch_live_fantasy_data():
         if gp > team_max_games[team_name]:
             team_max_games[team_name] = gp
 
-    # 2. AŞAMA: Verileri işle ve hatalı Form değerini düzelt
     player_list = []
     for el in res["elements"]:
         if el.get("status") in ["u"]:
@@ -183,8 +198,6 @@ def fetch_live_fantasy_data():
         total_minutes = float(el.get("minutes", 0.0) or 0.0)
         mpg = round(total_minutes / gp, 1) if gp > 0 else 0.0
         value_ratio = round(total_points / cost, 2) if cost > 0 else 0.0
-        
-        # YENİ EKLENEN SÜTUN: FIRSAT (FP/Min Kaldırıldı)
         firsat_index = round(form_val / cost, 2) if cost > 0 else 0.0
         
         availability = int(round((gp / team_games) * 100)) if team_games > 0 else 0
@@ -207,16 +220,6 @@ def fetch_live_fantasy_data():
     df = pd.DataFrame(player_list)
     return df
 
-st.markdown("""
-    <div class="custom-header-container">
-        <img src="https://upload.wikimedia.org/wikipedia/en/0/03/National_Basketball_Association_logo.svg" class="nba-official-logo" alt="NBA Logo">
-        <h1>NBA FANTASY <span class="header-thin">SCOUT</span></h1>
-        <div class="live-badge">
-            <div class="blinking-dot"></div> LIVE
-        </div>
-    </div>
-""", unsafe_allow_html=True)
-
 try:
     df = fetch_live_fantasy_data()
 except Exception as e:
@@ -224,16 +227,23 @@ except Exception as e:
     st.stop()
 
 # ==========================================
+# DİNAMİK BAŞLIK (Placeholder ile tablo sonrası güncellenecek)
+# ==========================================
+header_placeholder = st.empty()
+
+# ==========================================
 # ANA EKRAN DÜZENİ
 # ==========================================
-main_col_left, main_col_right = st.columns([1.5, 1]) 
+main_col_left, main_col_right = st.columns([1.7, 1]) # 4 kart sığsın diye sol tarafı hafifçe genişlettik
 
 with main_col_left:
     st.write("") 
-    metric_col1, metric_col2, metric_col3 = st.columns(3)
+    # YENİ: 4 SÜTUNLU LİDERLİK KARTLARI
+    metric_col1, metric_col2, metric_col3, metric_col4 = st.columns(4)
     metric_placeholder1 = metric_col1.empty()
     metric_placeholder2 = metric_col2.empty()
     metric_placeholder3 = metric_col3.empty()
+    metric_placeholder4 = metric_col4.empty()
 
 with main_col_right:
     st.markdown('<div class="esport-label" style="margin-bottom:12px; color:#38bdf8;">R A D A R   F I L T E R S</div>', unsafe_allow_html=True)
@@ -250,7 +260,6 @@ with main_col_right:
         pos_filter = st.selectbox("Mevki", ["Tümü", "BC", "FC"], label_visibility="collapsed")
     
     num_col1, num_col2, num_col3 = st.columns(3)
-    
     min_p_val = float(df["Fiyat (M$)"].min()) if not df.empty else 5.0
     max_p_val = float(df["Fiyat (M$)"].max()) if not df.empty else 23.0
     
@@ -266,6 +275,9 @@ with main_col_right:
         st.markdown('<div class="mini-label">MİN DK/MAÇ</div>', unsafe_allow_html=True)
         min_mpg = st.number_input("Min Dk/Maç", min_value=0.0, max_value=48.0, value=0.0, step=1.0, label_visibility="collapsed")
 
+# ==========================================
+# FİLTRELEME MANTIĞI
+# ==========================================
 if selected_players:
     filtered = df[df["Oyuncu"].isin(selected_players)]
 else:
@@ -279,46 +291,85 @@ else:
     elif pos_filter == "FC":
         filtered = filtered[filtered["Mevki"] == "FC"]
 
-# Varsayılan sıralama artık Fırsat sütununa göre yapılıyor
 sorted_table = filtered.sort_values(by="Fırsat", ascending=False)
 
-html_m1 = f"""
-<div class="esport-card" style="border-left-color: #64748b;">
-    <div class="esport-label">R A D A R   A C T I V E</div>
-    <div class="esport-value">{len(sorted_table)}</div>
-    <div class="esport-pill" style="background-color: rgba(100, 116, 139, 0.15); color: #94a3b8; border-color: rgba(100, 116, 139, 0.3);">
-        ✓ {len(df)} OYUNCUDAN
+# ==========================================
+# DİNAMİK BAŞLIĞI OLUŞTUR (Filtre Sonrası Sayı İle)
+# ==========================================
+header_placeholder.markdown(f"""
+    <div class="custom-header-container">
+        <img src="https://upload.wikimedia.org/wikipedia/en/0/03/National_Basketball_Association_logo.svg" class="nba-official-logo" alt="NBA Logo">
+        <h1>NBA FANTASY <span class="header-thin">SCOUT</span></h1>
+        <div class="live-badge">
+            <div class="blinking-dot"></div> LIVE
+        </div>
+        <div class="player-count-badge">
+            ⌖ {len(sorted_table)}
+        </div>
     </div>
-</div>
-"""
-metric_placeholder1.markdown(html_m1, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
+# ==========================================
+# 4 LİDER KARTINI DOLDURMA
+# ==========================================
 if not sorted_table.empty:
-    best_value_row = sorted_table.sort_values(by="Value", ascending=False).iloc[0]
-    html_m2 = f"""
-    <div class="esport-card" style="border-left-color: #38bdf8;">
-        <div class="esport-label">S C O U T   P I C K</div>
-        <div class="esport-value">{best_value_row['Oyuncu']}</div>
-        <div class="esport-pill">↑ {best_value_row['Value']:.2f} FP/$</div>
+    # 1. PPG LEADER (Mor)
+    best_ppg_row = sorted_table.loc[sorted_table['FP Ort. (PPG)'].idxmax()]
+    metric_placeholder1.markdown(f"""
+    <div class="esport-card" style="border-left-color: #a855f7;">
+        <div class="esport-label">P P G   L E A D E R</div>
+        <div class="esport-value" title="{best_ppg_row['Oyuncu']}">{best_ppg_row['Oyuncu']}</div>
+        <div class="esport-pill" style="background-color: rgba(168, 85, 247, 0.15); color: #c084fc; border-color: rgba(168, 85, 247, 0.3);">
+            ⭐ {best_ppg_row['FP Ort. (PPG)']:.1f} Ort
+        </div>
     </div>
-    """
-    metric_placeholder2.markdown(html_m2, unsafe_allow_html=True)
-    
+    """, unsafe_allow_html=True)
+
+    # 2. FORM LEADER (Turuncu)
     best_form_row = sorted_table.loc[sorted_table['Form'].idxmax()]
-    html_m3 = f"""
+    metric_placeholder2.markdown(f"""
     <div class="esport-card" style="border-left-color: #f97316;">
         <div class="esport-label">F O R M   L E A D E R</div>
-        <div class="esport-value">{best_form_row['Oyuncu']}</div>
+        <div class="esport-value" title="{best_form_row['Oyuncu']}">{best_form_row['Oyuncu']}</div>
         <div class="esport-pill" style="background-color: rgba(249, 115, 22, 0.15); color: #fb923c; border-color: rgba(249, 115, 22, 0.3);">
             🔥 {best_form_row['Form']:.1f} Form
         </div>
     </div>
-    """
-    metric_placeholder3.markdown(html_m3, unsafe_allow_html=True)
-else:
-    metric_placeholder2.markdown("""<div class="esport-card" style="border-left-color: #38bdf8;"><div class="esport-label">S C O U T   P I C K</div><div class="esport-value">-</div></div>""", unsafe_allow_html=True)
-    metric_placeholder3.markdown("""<div class="esport-card" style="border-left-color: #f97316;"><div class="esport-label">F O R M   L E A D E R</div><div class="esport-value">-</div></div>""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
+    
+    # 3. VALUE LEADER (Yeşil)
+    best_value_row = sorted_table.loc[sorted_table['Value'].idxmax()]
+    metric_placeholder3.markdown(f"""
+    <div class="esport-card" style="border-left-color: #10b981;">
+        <div class="esport-label">V A L U E   L E A D E R</div>
+        <div class="esport-value" title="{best_value_row['Oyuncu']}">{best_value_row['Oyuncu']}</div>
+        <div class="esport-pill" style="background-color: rgba(16, 185, 129, 0.15); color: #34d399; border-color: rgba(16, 185, 129, 0.3);">
+            💎 {best_value_row['Value']:.2f} Top/$
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
+    # 4. SCOUT PICK / FIRSAT (Mavi)
+    best_firsat_row = sorted_table.loc[sorted_table['Fırsat'].idxmax()]
+    metric_placeholder4.markdown(f"""
+    <div class="esport-card" style="border-left-color: #38bdf8;">
+        <div class="esport-label">S C O U T   P I C K</div>
+        <div class="esport-value" title="{best_firsat_row['Oyuncu']}">{best_firsat_row['Oyuncu']}</div>
+        <div class="esport-pill" style="background-color: rgba(56, 189, 248, 0.15); color: #7dd3fc; border-color: rgba(56, 189, 248, 0.3);">
+            🎯 {best_firsat_row['Fırsat']:.2f} Fırsat
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+else:
+    # Filtre boşsa kartları boş göster
+    metric_placeholder1.markdown("""<div class="esport-card" style="border-left-color: #a855f7;"><div class="esport-label">P P G   L E A D E R</div><div class="esport-value">-</div></div>""", unsafe_allow_html=True)
+    metric_placeholder2.markdown("""<div class="esport-card" style="border-left-color: #f97316;"><div class="esport-label">F O R M   L E A D E R</div><div class="esport-value">-</div></div>""", unsafe_allow_html=True)
+    metric_placeholder3.markdown("""<div class="esport-card" style="border-left-color: #10b981;"><div class="esport-label">V A L U E   L E A D E R</div><div class="esport-value">-</div></div>""", unsafe_allow_html=True)
+    metric_placeholder4.markdown("""<div class="esport-card" style="border-left-color: #38bdf8;"><div class="esport-label">S C O U T   P I C K</div><div class="esport-value">-</div></div>""", unsafe_allow_html=True)
+
+# ==========================================
+# ANA TABLO
+# ==========================================
 st.markdown("<br>", unsafe_allow_html=True)
 
 columns_to_show = ["Oyuncu", "Mevki", "Takım", "Fiyat (M$)", "Toplam FP", "FP Ort. (PPG)", "Form", "Value", "Fırsat", "Maç (Dev%)", "Dk/Maç"]
@@ -334,7 +385,7 @@ st.dataframe(
         "Toplam FP": st.column_config.NumberColumn(format="%.1f"),
         "FP Ort. (PPG)": st.column_config.NumberColumn(format="%.1f"),
         "Form": st.column_config.NumberColumn("🔥 Form", format="%.1f"),
-        "Value": st.column_config.NumberColumn("💎 Value (FP/$)", format="%.2f"),
+        "Value": st.column_config.NumberColumn("💎 Value", format="%.2f"),
         "Fırsat": st.column_config.NumberColumn("🎯 Fırsat", format="%.2f"),
         "Maç (Dev%)": st.column_config.TextColumn("Maç (Dev%)", width="small"),
         "Dk/Maç": st.column_config.NumberColumn(format="%.1f")
