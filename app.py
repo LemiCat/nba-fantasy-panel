@@ -120,7 +120,7 @@ st.markdown("""
         border: 1px solid;
     }
 
-    /* --- GHOST FİLTRE PANELİ CSS --- */
+    /* --- GHOST FİLTRE PANELİ VE RESET BUTONU CSS --- */
     div[data-baseweb="select"] > div, 
     div[data-baseweb="input"] > div {
         background-color: rgba(255, 255, 255, 0.02) !important;
@@ -147,6 +147,26 @@ st.markdown("""
         letter-spacing: 1.5px;
         margin-bottom: 2px;
         margin-top: 8px;
+    }
+    
+    div[data-testid="stButton"] button {
+        background-color: rgba(239, 68, 68, 0.05) !important;
+        border: 1px solid rgba(239, 68, 68, 0.3) !important;
+        color: #ef4444 !important;
+        font-weight: 700 !important;
+        font-size: 11px !important;
+        letter-spacing: 1px;
+        transition: all 0.3s ease;
+        padding: 2px 0px;
+    }
+    div[data-testid="stButton"] button:hover {
+        background-color: rgba(239, 68, 68, 0.2) !important;
+        border: 1px solid rgba(239, 68, 68, 0.8) !important;
+        color: #ffffff !important;
+    }
+    div[data-testid="stButton"] button:active {
+        background-color: #ef4444 !important;
+        color: #ffffff !important;
     }
     
     /* --- BORSA / SKOR BANDI (TICKER) CSS --- */
@@ -230,7 +250,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 3. Takım Logoları Kütüphanesi
 TEAM_LOGOS = {
     "ATL": "https://a.espncdn.com/i/teamlogos/nba/500/atl.png", "BOS": "https://a.espncdn.com/i/teamlogos/nba/500/bos.png",
     "BKN": "https://a.espncdn.com/i/teamlogos/nba/500/bkn.png", "CHA": "https://a.espncdn.com/i/teamlogos/nba/500/cha.png",
@@ -250,10 +269,8 @@ TEAM_LOGOS = {
 }
 
 def get_nba_matchday(kickoff_str):
-    """Maç saatlerini Amerika yerel saatine çekerek aynı 'Maç Günü'nde olanları gruplar."""
     try:
         dt = datetime.datetime.strptime(kickoff_str, "%Y-%m-%dT%H:%M:%SZ")
-        # UTC'den ET'ye (yaklaşık -5 saat) dönüştürerek NBA takvim gününü buluyoruz
         dt_et = dt - datetime.timedelta(hours=5)
         return dt_et.strftime("%Y-%m-%d")
     except Exception:
@@ -270,7 +287,6 @@ def fetch_live_fantasy_data():
         url_fix = "https://tr.nbafantasy.nba.com/api/fixtures/"
         res_fix = requests.get(url_fix, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10).json()
         
-        # Maçları zamana göre sırala
         valid_fixtures = [m for m in res_fix if m.get('kickoff_time')]
         valid_fixtures.sort(key=lambda x: x['kickoff_time'])
         
@@ -280,19 +296,16 @@ def fetch_live_fantasy_data():
         recent_finished = []
         next_upcoming = []
         
-        # SADECE EN SON TAMAMLANAN MAÇ GÜNÜNÜ ÇEK (Örn: Dün Gece Oynanan Tüm Maçlar)
         if finished_matches:
             last_match_date = get_nba_matchday(finished_matches[-1]['kickoff_time'])
             recent_finished = [m for m in finished_matches if get_nba_matchday(m['kickoff_time']) == last_match_date]
             
-        # SADECE SIRADAKİ İLK MAÇ GÜNÜNÜ ÇEK (Örn: Bu Gece Oynanacak Tüm Maçlar)
         if upcoming_matches:
             first_match_date = get_nba_matchday(upcoming_matches[0]['kickoff_time'])
             next_upcoming = [m for m in upcoming_matches if get_nba_matchday(m['kickoff_time']) == first_match_date]
             
         ticker_items = []
         
-        # BÖLÜM 1: Biten Maçlar (Skorlar - Tek Bir Maç Günü)
         if recent_finished:
             ticker_items.append("<span class='ticker-category'>[ SON MAÇ GÜNÜ ]</span>")
             for m in recent_finished:
@@ -311,7 +324,6 @@ def fetch_live_fantasy_data():
         if recent_finished and next_upcoming:
             ticker_items.append(" &nbsp;&nbsp;&nbsp;✦&nbsp;&nbsp;&nbsp; ")
             
-        # BÖLÜM 2: Gelecek Maçlar (Saatler - TSİ - Tek Bir Maç Günü)
         if next_upcoming:
             ticker_items.append("<span class='ticker-category'>[ SIRADAKİ MAÇ GÜNÜ ]</span>")
             for m in next_upcoming:
@@ -328,7 +340,7 @@ def fetch_live_fantasy_data():
                 if kickoff:
                     try:
                         dt = datetime.datetime.strptime(kickoff, "%Y-%m-%dT%H:%M:%SZ")
-                        dt = dt + datetime.timedelta(hours=3) # Gösterim için Türkiye Saatine (+3) çeviriyoruz
+                        dt = dt + datetime.timedelta(hours=3) 
                         time_str = dt.strftime("%H:%M")
                     except Exception:
                         pass
@@ -340,7 +352,6 @@ def fetch_live_fantasy_data():
     except Exception:
         ticker_html_text = "CANLI SKOR BAĞLANTISI BEKLENİYOR..."
     
-    # 3. Oyuncu istatistiklerini hesapla
     team_max_games = {team_name: 0 for team_name in teams.values()}
     for el in res["elements"]:
         if el.get("status") in ["u"]:
@@ -351,7 +362,6 @@ def fetch_live_fantasy_data():
         ppg_raw = float(el.get("points_per_game", 0.0) or 0.0)
         ppg = round(ppg_raw / 10.0, 1)
         gp = int(round(tp / ppg)) if ppg > 0 else 0
-        
         if gp > team_max_games[team_name]:
             team_max_games[team_name] = gp
 
@@ -410,14 +420,7 @@ except Exception as e:
     st.error(f"Veri çekme hatası: {e}")
     st.stop()
 
-# ==========================================
-# DİNAMİK BAŞLIK
-# ==========================================
 header_placeholder = st.empty()
-
-# ==========================================
-# ANA EKRAN DÜZENİ
-# ==========================================
 main_col_left, main_col_right = st.columns([1.7, 1]) 
 
 with main_col_left:
@@ -437,26 +440,37 @@ with main_col_right:
             "Oyuncu",
             options=sorted(df["Oyuncu"].unique()),
             placeholder="Oyuncu ara...",
-            label_visibility="collapsed"
+            label_visibility="collapsed",
+            key="search_player"
         )
     with filt_col2:
-        pos_filter = st.selectbox("Mevki", ["Tümü", "BC", "FC"], label_visibility="collapsed")
+        pos_filter = st.selectbox("Mevki", ["Tümü", "BC", "FC"], label_visibility="collapsed", key="filter_pos")
     
-    num_col1, num_col2, num_col3 = st.columns(3)
+    # Yeni: Buton için 4. Sütun Eklendi
+    num_col1, num_col2, num_col3, btn_col = st.columns([1, 1, 1, 0.7])
     min_p_val = float(df["Fiyat (M$)"].min()) if not df.empty else 5.0
     max_p_val = float(df["Fiyat (M$)"].max()) if not df.empty else 23.0
     
     with num_col1:
         st.markdown('<div class="mini-label">MAX FİYAT</div>', unsafe_allow_html=True)
-        tavan_maas = st.number_input("Max Fiyat", min_value=min_p_val, max_value=max_p_val, value=max_p_val, step=0.5, label_visibility="collapsed")
+        tavan_maas = st.number_input("Max Fiyat", min_value=min_p_val, max_value=max_p_val, value=max_p_val, step=0.5, label_visibility="collapsed", key="max_price")
         
     with num_col2:
         st.markdown('<div class="mini-label">MİN MAÇ</div>', unsafe_allow_html=True)
-        min_mac = st.number_input("Min Maç", min_value=0, max_value=82, value=0, step=1, label_visibility="collapsed")
+        min_mac = st.number_input("Min Maç", min_value=0, max_value=82, value=0, step=1, label_visibility="collapsed", key="min_game")
         
     with num_col3:
         st.markdown('<div class="mini-label">MİN DK/MAÇ</div>', unsafe_allow_html=True)
-        min_mpg = st.number_input("Min Dk/Maç", min_value=0.0, max_value=48.0, value=0.0, step=1.0, label_visibility="collapsed")
+        min_mpg = st.number_input("Min Dk/Maç", min_value=0.0, max_value=48.0, value=0.0, step=1.0, label_visibility="collapsed", key="min_min")
+
+    with btn_col:
+        st.markdown('<div class="mini-label" style="color:transparent; pointer-events:none;">X</div>', unsafe_allow_html=True)
+        if st.button("↺ SIFIRLA", use_container_width=True):
+            # Tıklandığında cache üzerindeki seçili anahtarları siler ve sayfayı anında yeniler
+            for key in ["search_player", "filter_pos", "max_price", "min_game", "min_min"]:
+                if key in st.session_state:
+                    del st.session_state[key]
+            st.rerun()
 
 # ==========================================
 # FİLTRELEME MANTIĞI
@@ -476,9 +490,6 @@ else:
 
 sorted_table = filtered.sort_values(by="Fırsat", ascending=False)
 
-# ==========================================
-# DİNAMİK BAŞLIĞI OLUŞTUR
-# ==========================================
 header_placeholder.markdown(f"""
     <div class="custom-header-container">
         <img src="https://upload.wikimedia.org/wikipedia/en/0/03/National_Basketball_Association_logo.svg" class="nba-official-logo" alt="NBA Logo">
@@ -492,9 +503,6 @@ header_placeholder.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# ==========================================
-# 4 LİDER KARTINI DOLDURMA
-# ==========================================
 if not sorted_table.empty:
     best_ppg_row = sorted_table.loc[sorted_table['FP Ort. (PPG)'].idxmax()]
     metric_placeholder1.markdown(f"""
@@ -540,9 +548,6 @@ if not sorted_table.empty:
     </div>
     """, unsafe_allow_html=True)
 
-# ==========================================
-# KAYAN SKOR BANDI (TICKER) EKLENTİSİ
-# ==========================================
 st.markdown(f"""
 <div class="ticker-container">
     <div class="ticker-label">NBA SKOR</div>
@@ -552,17 +557,11 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# ==========================================
-# HÜCRE RENKLENDİRME FONKSİYONLARI
-# ==========================================
 def style_ppg(val): return 'background-color: rgba(168, 85, 247, 0.15); color: #c084fc; font-weight: 700;'
 def style_form(val): return 'background-color: rgba(249, 115, 22, 0.15); color: #fb923c; font-weight: 700;'
 def style_value(val): return 'background-color: rgba(16, 185, 129, 0.15); color: #34d399; font-weight: 700;'
 def style_firsat(val): return 'background-color: rgba(56, 189, 248, 0.15); color: #7dd3fc; font-weight: 700;'
 
-# ==========================================
-# ANA TABLO
-# ==========================================
 columns_to_show = ["Oyuncu", "Mevki", "Takım", "Fiyat (M$)", "Dk/Maç", "Maç (Dev%)", "Toplam FP", "FP Ort. (PPG)", "Form", "Value", "Fırsat"]
 display_table = sorted_table[columns_to_show]
 
