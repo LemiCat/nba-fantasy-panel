@@ -5,9 +5,10 @@ import streamlit as st
 # 1. Sayfa ve Tema Ayarları
 st.set_page_config(page_title="NBA Fantasy Scout", layout="wide", page_icon="🏀", initial_sidebar_state="collapsed")
 
-# 2. Özel CSS: Arayüzü Uygulamaya (App) Dönüştür ve Animasyonlar Ekle
+# 2. Özel CSS: Arayüzü Uygulamaya (App) Dönüştür, Animasyonlar ve Ghost UI Ekle
 st.markdown("""
     <style>
+    /* Streamlit varsayılan menülerini gizle */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
@@ -18,32 +19,17 @@ st.markdown("""
         padding-bottom: 0rem !important;
     }
     
-    div[data-testid="stVerticalBlock"] > div > h1 {
-        padding-bottom: 0px !important;
-        margin-bottom: -15px !important;
-    }
-    
-    div[data-testid="stExpander"] {
-        margin-top: -10px !important;
-    }
-    
-    div[data-baseweb="select"] {
-        margin-bottom: -10px !important;
-    }
-
     /* --- BAŞLIK, LOGO VE CANLI YAYIN ROZETİ --- */
     .custom-header-container {
         display: flex;
         align-items: center;
         margin-bottom: 25px;
     }
-    
     .nba-official-logo {
         height: 38px; 
         margin-right: 15px;
         border-radius: 2px;
     }
-    
     .custom-header-container h1 {
         margin: 0;
         padding: 0;
@@ -52,13 +38,11 @@ st.markdown("""
         line-height: 1.2;
         letter-spacing: -0.5px;
     }
-    
     .header-thin {
         font-weight: 300;
         color: #94a3b8;
         letter-spacing: 1px;
     }
-
     .live-badge {
         display: inline-flex;
         align-items: center;
@@ -72,7 +56,6 @@ st.markdown("""
         letter-spacing: 0.5px;
         margin-left: 20px; 
     }
-
     .blinking-dot {
         width: 8px;
         height: 8px;
@@ -81,14 +64,13 @@ st.markdown("""
         margin-right: 8px;
         animation: pulse-animation 1.5s infinite;
     }
-
     @keyframes pulse-animation {
         0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); opacity: 1; }
         70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); opacity: 0.4; }
         100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); opacity: 1; }
     }
 
-    /* --- YENİ: ESPOR TARZI METRİK KARTLARI (KONSEPT 1) --- */
+    /* --- ESPOR TARZI METRİK KARTLARI --- */
     .esport-card {
         border-left: 3px solid #38bdf8;
         padding-left: 14px;
@@ -121,6 +103,41 @@ st.markdown("""
         font-size: 12px;
         font-weight: 700;
         letter-spacing: 0.5px;
+    }
+
+    /* --- YENİ: GHOST (HAYALET) FİLTRE PANELİ CSS --- */
+    /* Streamlit input kutularının dış çerçevelerini yok et, altını çizgi yap */
+    div[data-baseweb="select"] > div, 
+    div[data-baseweb="input"] > div {
+        background-color: rgba(255, 255, 255, 0.02) !important; /* Çok hafif bir saydamlık */
+        border-top: none !important;
+        border-left: none !important;
+        border-right: none !important;
+        border-bottom: 2px solid #1e293b !important;
+        border-radius: 0px !important;
+        transition: border-color 0.2s ease;
+    }
+    /* Kutuya tıklanınca (Focus) alt çizgi neon mavi parlasın */
+    div[data-baseweb="select"] > div:focus-within, 
+    div[data-baseweb="input"] > div:focus-within {
+        border-bottom: 2px solid #38bdf8 !important;
+        box-shadow: none !important;
+    }
+    
+    /* Input içindeki yazıları beyazlat ve boyutlandır */
+    div[data-baseweb="select"] div, div[data-baseweb="input"] input {
+        color: #f8fafc !important;
+        font-size: 13.5px !important;
+    }
+
+    /* Filtre üst başlıklarını minimalist yap */
+    .mini-label {
+        color: #64748b;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+        margin-bottom: 2px;
+        margin-top: 8px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -187,7 +204,8 @@ except Exception as e:
 # ==========================================
 # ANA EKRAN DÜZENİ: Sol %65, Sağ %35
 # ==========================================
-main_col_left, main_col_right = st.columns([1.8, 1])
+# Sağ tarafın iç içe girmemesi için oranı biraz daha dengeledik
+main_col_left, main_col_right = st.columns([1.5, 1]) 
 
 with main_col_left:
     st.write("") 
@@ -196,30 +214,38 @@ with main_col_left:
     metric_placeholder2 = metric_col2.empty()
     metric_placeholder3 = metric_col3.empty()
 
+# SAĞ TARAF: GHOST FİLTRE PANELİ (Kutusuz, Çizgili Terminal Tarzı)
 with main_col_right:
-    st.markdown("<h5 style='margin-bottom:10px; margin-top:5px; color:#f8fafc;'>🎯 Radar Filtreleri</h5>", unsafe_allow_html=True)
+    st.markdown('<div class="esport-label" style="margin-bottom:12px; color:#38bdf8;">R A D A R   F I L T E R S</div>', unsafe_allow_html=True)
     
     filt_col1, filt_col2 = st.columns([1.5, 1])
     with filt_col1:
         selected_players = st.multiselect(
-            "🔍 Oyuncu",
+            "Oyuncu",
             options=sorted(df["Oyuncu"].unique()),
-            help="İsim yazıp arayın.",
+            placeholder="Oyuncu ara...",
             label_visibility="collapsed"
         )
     with filt_col2:
-        pos_filter = st.selectbox("🏀 Mevki", ["Tümü", "BC", "FC"], label_visibility="collapsed")
+        pos_filter = st.selectbox("Mevki", ["Tümü", "BC", "FC"], label_visibility="collapsed")
     
-    with st.expander("⚙️ Sayısal Filtreler", expanded=False):
-        min_p = float(df["Fiyat (M$)"].min()) if not df.empty else 5.0
-        max_p = float(df["Fiyat (M$)"].max()) if not df.empty else 23.0
-        tavan_maas = st.slider("Max Fiyat (M$)", min_value=min_p, max_value=max_p, value=max_p, step=0.5)
+    # Rakam girişleri için 3'lü ince sütun (Yan yana)
+    num_col1, num_col2, num_col3 = st.columns(3)
+    
+    min_p_val = float(df["Fiyat (M$)"].min()) if not df.empty else 5.0
+    max_p_val = float(df["Fiyat (M$)"].max()) if not df.empty else 23.0
+    
+    with num_col1:
+        st.markdown('<div class="mini-label">MAX FİYAT</div>', unsafe_allow_html=True)
+        tavan_maas = st.number_input("Max Fiyat", min_value=min_p_val, max_value=max_p_val, value=max_p_val, step=0.5, label_visibility="collapsed")
         
-        sld_col1, sld_col2 = st.columns(2)
-        with sld_col1:
-            min_mac = st.slider("Min Maç (GP)", 0, 82, 0)
-        with sld_col2:
-            min_mpg = st.slider("Min Dk/Maç", 0, 48, 0)
+    with num_col2:
+        st.markdown('<div class="mini-label">MİN MAÇ</div>', unsafe_allow_html=True)
+        min_mac = st.number_input("Min Maç", min_value=0, max_value=82, value=0, step=1, label_visibility="collapsed")
+        
+    with num_col3:
+        st.markdown('<div class="mini-label">MİN DK/MAÇ</div>', unsafe_allow_html=True)
+        min_mpg = st.number_input("Min Dk/Maç", min_value=0.0, max_value=48.0, value=0.0, step=1.0, label_visibility="collapsed")
 
 # ==========================================
 # FİLTRELEME MANTIĞI
@@ -240,9 +266,8 @@ else:
 sorted_table = filtered.sort_values(by="Value", ascending=False)
 
 # ==========================================
-# ESPOR KARTLARINI DOLDURMA (Özel HTML)
+# ESPOR KARTLARINI DOLDURMA
 # ==========================================
-# 1. Kart: Filtrelenen Oyuncu Sayısı (Gri Vurgu)
 html_m1 = f"""
 <div class="esport-card" style="border-left-color: #64748b;">
     <div class="esport-label">R A D A R   A C T I V E</div>
@@ -254,7 +279,6 @@ html_m1 = f"""
 """
 metric_placeholder1.markdown(html_m1, unsafe_allow_html=True)
 
-# 2 & 3. Kartlar: Value ve Form Liderleri
 if not sorted_table.empty:
     best_value_row = sorted_table.iloc[0]
     html_m2 = f"""
