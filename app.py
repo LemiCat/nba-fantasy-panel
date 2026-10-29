@@ -361,23 +361,26 @@ else:
     metric_placeholder4.markdown("""<div class="esport-card" style="border-left-color: #38bdf8;"><div class="esport-label">S C O U T   P I C K</div><div class="esport-value">-</div></div>""", unsafe_allow_html=True)
 
 # ==========================================
-# HÜCRE RENKLENDİRME STYLER FONKSİYONLARI
+# HÜCRE RENKLENDİRME STYLER FONKSİYONLARI (ARKA PLAN EKLENDİ)
 # ==========================================
-def style_ppg(val): return 'color: #c084fc; font-weight: 700;'
-def style_form(val): return 'color: #fb923c; font-weight: 700;'
-def style_value(val): return 'color: #34d399; font-weight: 700;'
-def style_firsat(val): return 'color: #38bdf8; font-weight: 700;'
+# rgba ile verilen soluk tonlar, hücrenin arka planını terminal vurgusuna dönüştürür.
+def style_ppg(val): 
+    return 'background-color: rgba(168, 85, 247, 0.15); color: #c084fc; font-weight: 700;'
+def style_form(val): 
+    return 'background-color: rgba(249, 115, 22, 0.15); color: #fb923c; font-weight: 700;'
+def style_value(val): 
+    return 'background-color: rgba(16, 185, 129, 0.15); color: #34d399; font-weight: 700;'
+def style_firsat(val): 
+    return 'background-color: rgba(56, 189, 248, 0.15); color: #7dd3fc; font-weight: 700;'
 
 # ==========================================
 # ANA TABLO
 # ==========================================
 st.markdown("<br>", unsafe_allow_html=True)
 
-# Görselindeki kusursuz sıralama kilitlendi
 columns_to_show = ["Oyuncu", "Mevki", "Takım", "Fiyat (M$)", "Dk/Maç", "Maç (Dev%)", "Toplam FP", "FP Ort. (PPG)", "Form", "Value", "Fırsat"]
 display_table = sorted_table[columns_to_show]
 
-# Sadece hedef 4 sütunun metinlerine kartlardaki eşleşen renkler atandı
 try:
     styled_table = display_table.style\
         .map(style_ppg, subset=['FP Ort. (PPG)'])\
