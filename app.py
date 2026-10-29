@@ -69,7 +69,6 @@ st.markdown("""
         100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); opacity: 1; }
     }
     
-    /* YENİ: Minimalist Aktif Oyuncu Rozeti */
     .player-count-badge {
         display: inline-flex;
         align-items: center;
@@ -93,14 +92,14 @@ st.markdown("""
     }
     .esport-label {
         color: #94a3b8;
-        font-size: 10px; /* 4 sütuna sığması için küçültüldü */
+        font-size: 10px;
         font-weight: 700;
         letter-spacing: 2.0px;
         margin-bottom: 4px;
     }
     .esport-value {
         color: #ffffff;
-        font-size: 20px; /* İsimlerin alt satıra taşmaması için optimize edildi */
+        font-size: 20px;
         font-weight: 900;
         letter-spacing: -0.5px;
         margin-bottom: 8px;
@@ -227,18 +226,17 @@ except Exception as e:
     st.stop()
 
 # ==========================================
-# DİNAMİK BAŞLIK (Placeholder ile tablo sonrası güncellenecek)
+# DİNAMİK BAŞLIK
 # ==========================================
 header_placeholder = st.empty()
 
 # ==========================================
 # ANA EKRAN DÜZENİ
 # ==========================================
-main_col_left, main_col_right = st.columns([1.7, 1]) # 4 kart sığsın diye sol tarafı hafifçe genişlettik
+main_col_left, main_col_right = st.columns([1.7, 1]) 
 
 with main_col_left:
     st.write("") 
-    # YENİ: 4 SÜTUNLU LİDERLİK KARTLARI
     metric_col1, metric_col2, metric_col3, metric_col4 = st.columns(4)
     metric_placeholder1 = metric_col1.empty()
     metric_placeholder2 = metric_col2.empty()
@@ -294,7 +292,7 @@ else:
 sorted_table = filtered.sort_values(by="Fırsat", ascending=False)
 
 # ==========================================
-# DİNAMİK BAŞLIĞI OLUŞTUR (Filtre Sonrası Sayı İle)
+# DİNAMİK BAŞLIĞI OLUŞTUR
 # ==========================================
 header_placeholder.markdown(f"""
     <div class="custom-header-container">
@@ -310,58 +308,53 @@ header_placeholder.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 4 LİDER KARTINI DOLDURMA
+# 4 LİDER KARTINI DOLDURMA (Saf Terminal Stili)
 # ==========================================
 if not sorted_table.empty:
-    # 1. PPG LEADER (Mor)
     best_ppg_row = sorted_table.loc[sorted_table['FP Ort. (PPG)'].idxmax()]
     metric_placeholder1.markdown(f"""
     <div class="esport-card" style="border-left-color: #a855f7;">
         <div class="esport-label">P P G   L E A D E R</div>
         <div class="esport-value" title="{best_ppg_row['Oyuncu']}">{best_ppg_row['Oyuncu']}</div>
         <div class="esport-pill" style="background-color: rgba(168, 85, 247, 0.15); color: #c084fc; border-color: rgba(168, 85, 247, 0.3);">
-            ⭐ {best_ppg_row['FP Ort. (PPG)']:.1f} Ort
+            AVG | {best_ppg_row['FP Ort. (PPG)']:.1f}
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # 2. FORM LEADER (Turuncu)
     best_form_row = sorted_table.loc[sorted_table['Form'].idxmax()]
     metric_placeholder2.markdown(f"""
     <div class="esport-card" style="border-left-color: #f97316;">
         <div class="esport-label">F O R M   L E A D E R</div>
         <div class="esport-value" title="{best_form_row['Oyuncu']}">{best_form_row['Oyuncu']}</div>
         <div class="esport-pill" style="background-color: rgba(249, 115, 22, 0.15); color: #fb923c; border-color: rgba(249, 115, 22, 0.3);">
-            🔥 {best_form_row['Form']:.1f} Form
+            FRM | {best_form_row['Form']:.1f}
         </div>
     </div>
     """, unsafe_allow_html=True)
     
-    # 3. VALUE LEADER (Yeşil)
     best_value_row = sorted_table.loc[sorted_table['Value'].idxmax()]
     metric_placeholder3.markdown(f"""
     <div class="esport-card" style="border-left-color: #10b981;">
         <div class="esport-label">V A L U E   L E A D E R</div>
         <div class="esport-value" title="{best_value_row['Oyuncu']}">{best_value_row['Oyuncu']}</div>
         <div class="esport-pill" style="background-color: rgba(16, 185, 129, 0.15); color: #34d399; border-color: rgba(16, 185, 129, 0.3);">
-            💎 {best_value_row['Value']:.2f} Top/$
+            VAL | {best_value_row['Value']:.2f}
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # 4. SCOUT PICK / FIRSAT (Mavi)
     best_firsat_row = sorted_table.loc[sorted_table['Fırsat'].idxmax()]
     metric_placeholder4.markdown(f"""
     <div class="esport-card" style="border-left-color: #38bdf8;">
         <div class="esport-label">S C O U T   P I C K</div>
         <div class="esport-value" title="{best_firsat_row['Oyuncu']}">{best_firsat_row['Oyuncu']}</div>
         <div class="esport-pill" style="background-color: rgba(56, 189, 248, 0.15); color: #7dd3fc; border-color: rgba(56, 189, 248, 0.3);">
-            🎯 {best_firsat_row['Fırsat']:.2f} Fırsat
+            SCT | {best_firsat_row['Fırsat']:.2f}
         </div>
     </div>
     """, unsafe_allow_html=True)
 else:
-    # Filtre boşsa kartları boş göster
     metric_placeholder1.markdown("""<div class="esport-card" style="border-left-color: #a855f7;"><div class="esport-label">P P G   L E A D E R</div><div class="esport-value">-</div></div>""", unsafe_allow_html=True)
     metric_placeholder2.markdown("""<div class="esport-card" style="border-left-color: #f97316;"><div class="esport-label">F O R M   L E A D E R</div><div class="esport-value">-</div></div>""", unsafe_allow_html=True)
     metric_placeholder3.markdown("""<div class="esport-card" style="border-left-color: #10b981;"><div class="esport-label">V A L U E   L E A D E R</div><div class="esport-value">-</div></div>""", unsafe_allow_html=True)
@@ -384,9 +377,9 @@ st.dataframe(
         "Fiyat (M$)": st.column_config.NumberColumn(format="%.1f M$"),
         "Toplam FP": st.column_config.NumberColumn(format="%.1f"),
         "FP Ort. (PPG)": st.column_config.NumberColumn(format="%.1f"),
-        "Form": st.column_config.NumberColumn("🔥 Form", format="%.1f"),
-        "Value": st.column_config.NumberColumn("💎 Value", format="%.2f"),
-        "Fırsat": st.column_config.NumberColumn("🎯 Fırsat", format="%.2f"),
+        "Form": st.column_config.NumberColumn("Form", format="%.1f"),
+        "Value": st.column_config.NumberColumn("Value (FP/$)", format="%.2f"),
+        "Fırsat": st.column_config.NumberColumn("Fırsat", format="%.2f"),
         "Maç (Dev%)": st.column_config.TextColumn("Maç (Dev%)", width="small"),
         "Dk/Maç": st.column_config.NumberColumn(format="%.1f")
     }
