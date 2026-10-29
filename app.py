@@ -361,6 +361,34 @@ else:
     metric_placeholder4.markdown("""<div class="esport-card" style="border-left-color: #38bdf8;"><div class="esport-label">S C O U T   P I C K</div><div class="esport-value">-</div></div>""", unsafe_allow_html=True)
 
 # ==========================================
+# HÜCRE RENKLENDİRME (STYLING) FONKSİYONLARI
+# ==========================================
+def style_mevki(val):
+    # FC için Bordo Kırmızı, BC için Koyu Lacivert (Yazılar tam beyaz)
+    if val == 'FC':
+        return 'background-color: #5c0915; color: #ffffff; font-weight: 800;'
+    elif val == 'BC':
+        return 'background-color: #0a183d; color: #ffffff; font-weight: 800;'
+    return ''
+
+def style_team(val):
+    # NBA Takımları için karanlık temada gözü yormadan parlayan 30 eşsiz Hex Kodu
+    team_colors = {
+        "ATL": "#FF4136", "BOS": "#2ECC40", "BKN": "#DDDDDD", 
+        "CHA": "#39CCCC", "CHI": "#FF3333", "CLE": "#FF5C8D", 
+        "DAL": "#0074D9", "DEN": "#FFDC00", "DET": "#0055FF", 
+        "GSW": "#F2CA00", "HOU": "#FF1111", "IND": "#FFDF00", 
+        "LAC": "#1E90FF", "LAL": "#FFD700", "MEM": "#7FDBFF", 
+        "MIA": "#FF0055", "MIL": "#01FF70", "MIN": "#B2FF05", 
+        "NOP": "#D4AF37", "NYK": "#FF851B", "OKC": "#00BFFF", 
+        "ORL": "#19A3FF", "PHI": "#4169E1", "PHX": "#FF6600", 
+        "POR": "#FF4B4B", "SAC": "#B10DC9", "SAS": "#AAAAAA", 
+        "TOR": "#FF2222", "UTA": "#F7E018", "WAS": "#E71C25"
+    }
+    color = team_colors.get(val, "#FFFFFF")
+    return f'color: {color}; font-weight: 800;'
+
+# ==========================================
 # ANA TABLO
 # ==========================================
 st.markdown("<br>", unsafe_allow_html=True)
@@ -368,8 +396,15 @@ st.markdown("<br>", unsafe_allow_html=True)
 columns_to_show = ["Oyuncu", "Mevki", "Takım", "Fiyat (M$)", "Toplam FP", "FP Ort. (PPG)", "Form", "Value", "Fırsat", "Maç (Dev%)", "Dk/Maç"]
 display_table = sorted_table[columns_to_show]
 
+# Pandas Dataframe'i renklendirerek Streamlit'e aktarma işlemi
+try:
+    styled_table = display_table.style.map(style_mevki, subset=['Mevki']).map(style_team, subset=['Takım'])
+except AttributeError:
+    # Pandas sürümü eski ise .map yerine .applymap kullanılır
+    styled_table = display_table.style.applymap(style_mevki, subset=['Mevki']).applymap(style_team, subset=['Takım'])
+
 st.dataframe(
-    display_table,
+    styled_table,
     use_container_width=True,
     hide_index=True,
     height=600,
