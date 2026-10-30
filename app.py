@@ -326,10 +326,62 @@ east_data, west_data = fetch_nba_standings()
 
 def build_standings_html(data):
     if not data: return "<div style='color:#ef4444; font-size:12px; padding: 10px;'>API'den puan durumu çekilemedi.</div>"
-    html = "<table class='st-table'><thead><tr><th style='width:30px;'>#</th><th>Takım</th><th>W</th><th>L</th><th>%</th><th>GB</th><th>Strk</th></tr></thead><tbody>"
+    
+    html = """
+    <table class='st-table' style='width: 100%; max-width: 900px; margin: 0 auto; background: rgba(15,23,42,0.4); border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.3);'>
+        <thead style='background: rgba(255,255,255,0.02);'>
+            <tr>
+                <th style='width:40px; text-align:center;'>#</th>
+                <th>Takım</th>
+                <th style='text-align:center;'>W</th>
+                <th style='text-align:center;'>L</th>
+                <th style='text-align:center;'>%</th>
+                <th style='text-align:center;'>GB</th>
+                <th style='text-align:center;'>Form</th>
+            </tr>
+        </thead>
+        <tbody>
+    """
+    
     for i, row in enumerate(data):
-        html += f"<tr><td><span style='color:#64748b; font-weight:900;'>{i+1}</span></td><td><img src='{row['logo']}' style='height:20px; width:20px; vertical-align:middle; margin-right:8px;'> <strong>{row['name']}</strong></td><td>{row['w']}</td><td>{row['l']}</td><td>{row['pct']}</td><td>{row['gb']}</td><td>{row['strk']}</td></tr>"
+        rank = i + 1
+        # Playoff & Play-in sınırları için sol kenarlık renkleri
+        border_color = "transparent"
+        if rank <= 6:
+            border_color = "#10b981" # Playoff (Yeşil)
+        elif rank <= 10:
+            border_color = "#f59e0b" # Play-in (Sarı)
+            
+        # Form (Streak) için hap (pill) tasarımı
+        strk = row['strk']
+        if strk.startswith('W'):
+            strk_html = f"<span style='background:rgba(16,185,129,0.15); color:#34d399; padding:2px 8px; border-radius:12px; font-size:10px; font-weight:800; border:1px solid rgba(16,185,129,0.3);'>{strk}</span>"
+        elif strk.startswith('L'):
+            strk_html = f"<span style='background:rgba(239,68,68,0.15); color:#f87171; padding:2px 8px; border-radius:12px; font-size:10px; font-weight:800; border:1px solid rgba(239,68,68,0.3);'>{strk}</span>"
+        else:
+            strk_html = f"<span style='color:#94a3b8;'>{strk}</span>"
+
+        html += f"""
+        <tr style='border-left: 3px solid {border_color};'>
+            <td style='text-align:center;'><span style='color:#64748b; font-weight:900; font-size:11px;'>{rank}</span></td>
+            <td><img src='{row['logo']}' style='height:24px; width:24px; vertical-align:middle; margin-right:12px;'> <strong style='color:#e2e8f0; font-size:13.5px; letter-spacing:0.3px;'>{row['name']}</strong></td>
+            <td style='text-align:center; color:#f8fafc; font-weight:700;'>{row['w']}</td>
+            <td style='text-align:center; color:#94a3b8;'>{row['l']}</td>
+            <td style='text-align:center; color:#38bdf8; font-weight:600;'>{row['pct']}</td>
+            <td style='text-align:center; color:#64748b;'>{row['gb']}</td>
+            <td style='text-align:center;'>{strk_html}</td>
+        </tr>
+        """
     html += "</tbody></table>"
+    
+    # Alt kısma ufak bir Playoff/Play-in lejantı (açıklama) ekleyelim
+    html += """
+    <div style='max-width: 900px; margin: 10px auto 0 auto; display:flex; gap:15px; font-size:10px; font-weight:700; color:#64748b;'>
+        <div style='display:flex; align-items:center; gap:5px;'><div style='width:8px; height:8px; background:#10b981; border-radius:50%;'></div> Doğrudan Playoff (1-6)</div>
+        <div style='display:flex; align-items:center; gap:5px;'><div style='width:8px; height:8px; background:#f59e0b; border-radius:50%;'></div> Play-in Turnuvası (7-10)</div>
+    </div>
+    """
+    
     return html
 
 east_html = build_standings_html(east_data)
