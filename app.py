@@ -209,7 +209,7 @@ st.markdown("""
     .ticker-label-select:hover { background-color: #dc2626; }
     
     .ticker-content {
-        white-space: nowrap; animation: ticker 50s linear infinite; color: #e2e8f0;
+        white-space: nowrap; animation: ticker 20s linear infinite; color: #e2e8f0;
         font-family: monospace; font-size: 14px; font-weight: 600; padding-left: 100%;
         display: flex; align-items: center; height: 34px;
     }
