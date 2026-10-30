@@ -187,36 +187,54 @@ st.markdown("""
         color: #ffffff !important;
     }
     
+    /* --- YENİ: DİNAMİK PUAN DURUMU (STANDINGS) VE TICKER DROPDOWN CSS --- */
     .ticker-container {
         width: 100%;
-        overflow: hidden;
+        overflow: hidden; 
         background-color: rgba(15, 23, 42, 0.6); 
         border-top: 1px solid rgba(56, 189, 248, 0.2);
         border-bottom: 1px solid rgba(56, 189, 248, 0.2);
-        padding: 6px 0;
         margin-top: 10px;
         margin-bottom: 20px;
         position: relative;
-        display: flex;
-        align-items: center;
         border-radius: 4px;
         backdrop-filter: blur(6px);
+        min-height: 34px;
+        transition: all 0.3s ease;
     }
-    .ticker-label {
+    
+    .ticker-dropdown-wrapper {
+        position: absolute;
+        left: 0;
+        top: 0;
+        z-index: 20;
+        height: 34px;
+        border-right: 2px solid #0f172a;
+    }
+    
+    .ticker-label-select {
         background-color: #ef4444;
         color: #ffffff;
         font-size: 11px;
         font-weight: 900;
         letter-spacing: 1px;
-        padding: 6px 14px;
-        position: absolute;
-        left: 0;
-        z-index: 10;
+        padding: 0px 24px 0px 14px;
         height: 100%;
-        display: flex;
-        align-items: center;
-        border-right: 2px solid #0f172a;
+        border: none;
+        outline: none;
+        cursor: pointer;
+        appearance: none;
+        -webkit-appearance: none;
+        background-image: url('data:image/svg+xml;utf8,<svg fill="%23ffffff" height="14" viewBox="0 0 24 24" width="14" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>');
+        background-repeat: no-repeat;
+        background-position: right 6px center;
+        transition: 0.2s;
     }
+    .ticker-label-select option {
+        background-color: #0f172a;
+        color: #fff;
+    }
+    
     .ticker-content {
         white-space: nowrap;
         animation: ticker 50s linear infinite;
@@ -227,44 +245,31 @@ st.markdown("""
         padding-left: 100%;
         display: flex;
         align-items: center;
+        height: 34px;
     }
-    .ticker-content:hover {
-        animation-play-state: paused;
+    .ticker-content:hover { animation-play-state: paused; }
+    
+    .score-hl { color: #ffffff; font-weight: 900; margin: 0 4px; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+    .time-hl { color: #7dd3fc; font-weight: 900; margin: 0 4px; background: rgba(56, 189, 248, 0.15); padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+    .ticker-logo { height: 22px; width: auto; vertical-align: middle; margin: 0 6px; }
+    .ticker-category { color: #94a3b8; font-weight: 800; letter-spacing: 1px; margin: 0 15px; }
+    @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+
+    /* PUAN DURUMU TABLOLARI VE SEKMELERİ (TABS) */
+    .st-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+    .st-tab {
+        background: transparent; border: 1px solid rgba(255,255,255,0.1);
+        color: #94a3b8; padding: 6px 16px; border-radius: 4px;
+        font-weight: 700; font-size: 11px; cursor: pointer; transition: 0.2s;
+        letter-spacing: 0.5px;
     }
-    .score-hl {
-        color: #ffffff;
-        font-weight: 900;
-        margin: 0 4px;
-        background: rgba(255,255,255,0.1);
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-size: 13px;
-    }
-    .time-hl {
-        color: #7dd3fc;
-        font-weight: 900;
-        margin: 0 4px;
-        background: rgba(56, 189, 248, 0.15);
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-size: 13px;
-    }
-    .ticker-logo {
-        height: 22px;
-        width: auto;
-        vertical-align: middle;
-        margin: 0 6px;
-    }
-    .ticker-category {
-        color: #94a3b8;
-        font-weight: 800;
-        letter-spacing: 1px;
-        margin: 0 15px;
-    }
-    @keyframes ticker {
-        0% { transform: translateX(0); }
-        100% { transform: translateX(-100%); }
-    }
+    .st-tab:hover { background: rgba(255,255,255,0.05); }
+    .st-tab.active { background: #3b82f6; border-color: #3b82f6; color: white; }
+    
+    .st-table { width: 100%; border-collapse: collapse; font-size: 13px; color: #cbd5e1; }
+    .st-table th { text-align: left; padding: 8px 10px; color: #94a3b8; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 11px; font-weight: 800; text-transform: uppercase; }
+    .st-table td { padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+    .st-table tr:hover { background: rgba(255,255,255,0.02); }
     </style>
 """, unsafe_allow_html=True)
 
@@ -293,6 +298,48 @@ def get_nba_matchday(kickoff_str):
         return dt_et.strftime("%Y-%m-%d")
     except Exception:
         return ""
+
+@st.cache_data(show_spinner=False, ttl=1800)
+def fetch_nba_standings():
+    # ESPN altyapısından Doğrudan Doğu/Batı Anlık Puan Durumu Çekimi
+    try:
+        url = "https://site.api.espn.com/apis/v2/sports/basketball/nba/standings"
+        res = requests.get(url, timeout=10).json()
+        east, west = [], []
+        for child in res.get("children", []):
+            conf_name = child.get("name")
+            for t in child.get("standings", {}).get("entries", []):
+                stats = {s["name"]: s["displayValue"] for s in t["stats"]}
+                team = t["team"]
+                row = {
+                    "name": team["displayName"],
+                    "logo": team["logos"][0]["href"] if team.get("logos") else "",
+                    "w": stats.get("wins", "0"),
+                    "l": stats.get("losses", "0"),
+                    "pct": stats.get("winPercent", "0"),
+                    "gb": stats.get("gamesBehind", "0"),
+                    "strk": stats.get("streak", "-")
+                }
+                if "East" in conf_name:
+                    east.append(row)
+                else:
+                    west.append(row)
+        return east, west
+    except Exception:
+        return [], []
+
+east_data, west_data = fetch_nba_standings()
+
+def build_standings_html(data):
+    if not data: return "<div style='color:#ef4444; font-size:12px; padding: 10px;'>API'den puan durumu çekilemedi.</div>"
+    html = "<table class='st-table'><thead><tr><th style='width:30px;'>#</th><th>Takım</th><th>W</th><th>L</th><th>%</th><th>GB</th><th>Strk</th></tr></thead><tbody>"
+    for i, row in enumerate(data):
+        html += f"<tr><td><span style='color:#64748b; font-weight:900;'>{i+1}</span></td><td><img src='{row['logo']}' style='height:20px; width:20px; vertical-align:middle; margin-right:8px;'> <strong>{row['name']}</strong></td><td>{row['w']}</td><td>{row['l']}</td><td>{row['pct']}</td><td>{row['gb']}</td><td>{row['strk']}</td></tr>"
+    html += "</tbody></table>"
+    return html
+
+east_html = build_standings_html(east_data)
+west_html = build_standings_html(west_data)
 
 @st.cache_data(show_spinner=True, ttl=900)
 def fetch_live_fantasy_data():
@@ -415,7 +462,6 @@ def fetch_live_fantasy_data():
             total_points = 0.0
             form_val = 0.0
             ppg_val = 0.0
-        # -----------------------------------------------
             
         value_ratio = round(total_points / cost, 2) if cost > 0 and gp > 0 else 0.0
         firsat_index = round(form_val / cost, 2) if cost > 0 and gp > 0 else 0.0
@@ -578,14 +624,55 @@ if not sorted_table.empty:
     </div>
     """, unsafe_allow_html=True)
 
-st.markdown(f"""
+# ==========================================
+# İNTERAKTİF HTML: DROPDOWN & PUAN DURUMU (STANDINGS)
+# ==========================================
+html_block = f"""
 <div class="ticker-container">
-    <div class="ticker-label">NBA SKOR</div>
-    <div class="ticker-content">
+    <div class="ticker-dropdown-wrapper">
+        <select class="ticker-label-select" onchange="
+            if(this.value === 'standings') {{
+                document.getElementById('view-ticker').style.display = 'none';
+                document.getElementById('view-standings').style.display = 'block';
+                this.style.backgroundColor = '#3b82f6';
+            }} else {{
+                document.getElementById('view-ticker').style.display = 'flex';
+                document.getElementById('view-standings').style.display = 'none';
+                this.style.backgroundColor = '#ef4444';
+            }}
+        ">
+            <option value="ticker">NBA SKOR ▼</option>
+            <option value="standings">PUAN DURUMU</option>
+        </select>
+    </div>
+    
+    <!-- KAYAR BANT (TICKER) GÖRÜNÜMÜ -->
+    <div class="ticker-content" id="view-ticker">
         {ticker_text}
     </div>
+    
+    <!-- PUAN DURUMU (STANDINGS) GÖRÜNÜMÜ -->
+    <div id="view-standings" style="display:none; width:100%; padding: 45px 20px 20px 20px;">
+        <div class="st-tabs">
+            <button class="st-tab active" id="btn-east" onclick="
+                document.getElementById('conf-east').style.display='block';
+                document.getElementById('conf-west').style.display='none';
+                this.classList.add('active');
+                document.getElementById('btn-west').classList.remove('active');
+            ">DOĞU KONFERANSI</button>
+            <button class="st-tab" id="btn-west" onclick="
+                document.getElementById('conf-east').style.display='none';
+                document.getElementById('conf-west').style.display='block';
+                this.classList.add('active');
+                document.getElementById('btn-east').classList.remove('active');
+            ">BATI KONFERANSI</button>
+        </div>
+        <div id="conf-east">{east_html}</div>
+        <div id="conf-west" style="display:none;">{west_html}</div>
+    </div>
 </div>
-""", unsafe_allow_html=True)
+"""
+st.markdown(html_block, unsafe_allow_html=True)
 
 def style_ppg(val): return 'background-color: rgba(168, 85, 247, 0.15); color: #c084fc; font-weight: 700;'
 def style_form(val): return 'background-color: rgba(249, 115, 22, 0.15); color: #fb923c; font-weight: 700;'
