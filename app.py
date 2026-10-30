@@ -324,9 +324,9 @@ def fetch_nba_standings():
 
 east_data, west_data = fetch_nba_standings()
 
-def build_standings_html(data):
+def build_standings_html(data, title):
     if not data: return "<div style='color:#ef4444; font-size:12px; padding: 10px;'>API'den puan durumu çekilemedi.</div>"
-    html = "<table class='st-table' style='width:100%; max-width:900px; margin:0 auto; background:rgba(15,23,42,0.4); border-radius:8px; overflow:hidden; box-shadow:0 4px 15px rgba(0,0,0,0.3);'><thead style='background:rgba(255,255,255,0.02);'><tr><th style='width:40px; text-align:center;'>#</th><th>Takım</th><th style='text-align:center;'>W</th><th style='text-align:center;'>L</th><th style='text-align:center;'>%</th><th style='text-align:center;'>GB</th><th style='text-align:center;'>Form</th></tr></thead><tbody>"
+    html = f"<div style='flex:1; background:rgba(15,23,42,0.4); border-radius:8px; overflow:hidden; box-shadow:0 4px 15px rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.05);'><div style='background:rgba(255,255,255,0.03); padding:10px 15px; font-weight:800; font-size:12px; color:#38bdf8; letter-spacing:1px; border-bottom:1px solid rgba(255,255,255,0.05);'>{title}</div><table class='st-table' style='width:100%; margin:0; background:transparent;'><thead style='background:transparent;'><tr><th style='width:30px; text-align:center;'>#</th><th>Takım</th><th style='text-align:center;'>W</th><th style='text-align:center;'>L</th><th style='text-align:center;'>%</th><th style='text-align:center;'>GB</th><th style='text-align:center;'>Form</th></tr></thead><tbody>"
     for i, row in enumerate(data):
         rank = i + 1
         border_color = "#10b981" if rank <= 6 else "#f59e0b" if rank <= 10 else "transparent"
@@ -334,12 +334,12 @@ def build_standings_html(data):
         if strk.startswith('W'): strk_html = f"<span style='background:rgba(16,185,129,0.15); color:#34d399; padding:2px 8px; border-radius:12px; font-size:10px; font-weight:800; border:1px solid rgba(16,185,129,0.3);'>{strk}</span>"
         elif strk.startswith('L'): strk_html = f"<span style='background:rgba(239,68,68,0.15); color:#f87171; padding:2px 8px; border-radius:12px; font-size:10px; font-weight:800; border:1px solid rgba(239,68,68,0.3);'>{strk}</span>"
         else: strk_html = f"<span style='color:#94a3b8;'>{strk}</span>"
-        html += f"<tr style='border-left:3px solid {border_color};'><td style='text-align:center;'><span style='color:#64748b; font-weight:900; font-size:11px;'>{rank}</span></td><td><img src='{row['logo']}' style='height:24px; width:24px; vertical-align:middle; margin-right:12px;'><strong style='color:#e2e8f0; font-size:13.5px; letter-spacing:0.3px;'>{row['name']}</strong></td><td style='text-align:center; color:#f8fafc; font-weight:700;'>{row['w']}</td><td style='text-align:center; color:#94a3b8;'>{row['l']}</td><td style='text-align:center; color:#38bdf8; font-weight:600;'>{row['pct']}</td><td style='text-align:center; color:#64748b;'>{row['gb']}</td><td style='text-align:center;'>{strk_html}</td></tr>"
-    html += "</tbody></table><div style='max-width:900px; margin:10px auto 0 auto; display:flex; gap:15px; font-size:10px; font-weight:700; color:#64748b;'><div style='display:flex; align-items:center; gap:5px;'><div style='width:8px; height:8px; background:#10b981; border-radius:50%;'></div> Doğrudan Playoff (1-6)</div><div style='display:flex; align-items:center; gap:5px;'><div style='width:8px; height:8px; background:#f59e0b; border-radius:50%;'></div> Play-in Turnuvası (7-10)</div></div>"
+        html += f"<tr style='border-left:3px solid {border_color};'><td style='text-align:center;'><span style='color:#64748b; font-weight:900; font-size:11px;'>{rank}</span></td><td><img src='{row['logo']}' style='height:20px; width:20px; vertical-align:middle; margin-right:10px;'><strong style='color:#e2e8f0; font-size:12.5px; letter-spacing:0.3px;'>{row['name']}</strong></td><td style='text-align:center; color:#f8fafc; font-weight:700;'>{row['w']}</td><td style='text-align:center; color:#94a3b8;'>{row['l']}</td><td style='text-align:center; color:#38bdf8; font-weight:600;'>{row['pct']}</td><td style='text-align:center; color:#64748b;'>{row['gb']}</td><td style='text-align:center;'>{strk_html}</td></tr>"
+    html += "</tbody></table></div>"
     return html
 
-east_html = build_standings_html(east_data)
-west_html = build_standings_html(west_data)
+east_html = build_standings_html(east_data, "DOĞU KONFERANSI")
+west_html = build_standings_html(west_data, "BATI KONFERANSI")
 
 @st.cache_data(show_spinner=True, ttl=900)
 def fetch_live_fantasy_data():
@@ -625,10 +625,9 @@ if not sorted_table.empty:
     """, unsafe_allow_html=True)
 
 # ==========================================
-# İNTERAKTİF HTML: DROPDOWN & PUAN DURUMU (STANDINGS)
-# Markdown Parse hatasını önlemek için boşluksuz saf HTML ve Checkbox Hack
+# İNTERAKTİF HTML: DROPDOWN & YAN YANA (SIDE-BY-SIDE) PUAN DURUMU
 # ==========================================
-html_block = f"""<div style="position:relative; width:100%;"><input type="checkbox" id="toggle-standings" style="display:none;"><div class="ticker-container"><label for="toggle-standings" class="ticker-label-select"><span class="lbl-skor">NBA SKOR ▼</span><span class="lbl-puan">PUAN DURUMU ✖</span></label><div class="ticker-content" id="view-ticker">{ticker_text}</div><div id="view-standings"><input type="radio" name="conf-tabs" id="tab-east" checked style="display:none;"><input type="radio" name="conf-tabs" id="tab-west" style="display:none;"><div class="st-tabs"><label for="tab-east" class="st-tab tab-label-east">DOĞU KONFERANSI</label><label for="tab-west" class="st-tab tab-label-west">BATI KONFERANSI</label></div><div class="conf-east-content">{east_html}</div><div class="conf-west-content">{west_html}</div></div></div></div>"""
+html_block = f"""<div style="position:relative; width:100%;"><input type="checkbox" id="toggle-standings" style="display:none;"><div class="ticker-container"><label for="toggle-standings" class="ticker-label-select"><span class="lbl-skor">NBA SKOR ▼</span><span class="lbl-puan">PUAN DURUMU ✖</span></label><div class="ticker-content" id="view-ticker">{ticker_text}</div><div id="view-standings"><div style="display:flex; gap:20px; width:100%;">{east_html}{west_html}</div><div style="margin-top:15px; display:flex; justify-content:center; gap:20px; font-size:11px; font-weight:700; color:#64748b;"><div style="display:flex; align-items:center; gap:6px;"><div style="width:10px; height:10px; background:#10b981; border-radius:50%;"></div> Doğrudan Playoff (1-6)</div><div style="display:flex; align-items:center; gap:6px;"><div style="width:10px; height:10px; background:#f59e0b; border-radius:50%;"></div> Play-in Turnuvası (7-10)</div></div></div></div></div>"""
 st.markdown(html_block, unsafe_allow_html=True)
 
 def style_ppg(val): return 'background-color: rgba(168, 85, 247, 0.15); color: #c084fc; font-weight: 700;'
