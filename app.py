@@ -293,6 +293,11 @@ def fetch_nba_standings():
             for t in child.get("standings", {}).get("entries", []):
                 stats = {s["name"]: s["displayValue"] for s in t["stats"]}
                 team = t["team"]
+                
+                # Sayısal sıralama yapabilmek için pct ve wins değerlerini float/int'e çeviriyoruz
+                win_pct_val = float(stats.get("winPercent", "0"))
+                wins_val = int(stats.get("wins", "0"))
+                
                 row = {
                     "name": team["displayName"],
                     "logo": team["logos"][0]["href"] if team.get("logos") else "",
@@ -300,12 +305,19 @@ def fetch_nba_standings():
                     "l": stats.get("losses", "0"),
                     "pct": stats.get("winPercent", "0"),
                     "gb": stats.get("gamesBehind", "0"),
-                    "strk": stats.get("streak", "-")
+                    "strk": stats.get("streak", "-"),
+                    "_sort_pct": win_pct_val,
+                    "_sort_wins": wins_val
                 }
                 if "East" in conf_name:
                     east.append(row)
                 else:
                     west.append(row)
+                    
+        # Önce Kazanma Yüzdesine, eşitlik varsa Galibiyet sayısına göre büyükten küçüğe sıralama
+        east = sorted(east, key=lambda x: (x["_sort_pct"], x["_sort_wins"]), reverse=True)
+        west = sorted(west, key=lambda x: (x["_sort_pct"], x["_sort_wins"]), reverse=True)
+        
         return east, west
     except Exception:
         return [], []
