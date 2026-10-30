@@ -376,8 +376,10 @@ def fetch_live_fantasy_data():
             for m in recent_finished:
                 h_team = teams.get(m['team_h'], "EV")
                 a_team = teams.get(m['team_a'], "DEP")
-                h_logo = TEAM_LOGOS.get(h_team, "")
-                a_logo = TEAM_LOGOS.get(a_team, "")
+                
+                # BÜYÜK/KÜÇÜK HARF (UPPERCASE) KORUMASI EKLENDİ
+                h_logo = TEAM_LOGOS.get(str(h_team).upper(), "")
+                a_logo = TEAM_LOGOS.get(str(a_team).upper(), "")
                 
                 h_img = f"<img src='{h_logo}' class='ticker-logo'>" if h_logo else ""
                 a_img = f"<img src='{a_logo}' class='ticker-logo'>" if a_logo else ""
@@ -394,8 +396,10 @@ def fetch_live_fantasy_data():
             for m in next_upcoming:
                 h_team = teams.get(m['team_h'], "EV")
                 a_team = teams.get(m['team_a'], "DEP")
-                h_logo = TEAM_LOGOS.get(h_team, "")
-                a_logo = TEAM_LOGOS.get(a_team, "")
+                
+                # BÜYÜK/KÜÇÜK HARF (UPPERCASE) KORUMASI EKLENDİ
+                h_logo = TEAM_LOGOS.get(str(h_team).upper(), "")
+                a_logo = TEAM_LOGOS.get(str(a_team).upper(), "")
                 
                 h_img = f"<img src='{h_logo}' class='ticker-logo'>" if h_logo else ""
                 a_img = f"<img src='{a_logo}' class='ticker-logo'>" if a_logo else ""
@@ -457,7 +461,6 @@ def fetch_live_fantasy_data():
         total_minutes = float(el.get("minutes", 0.0) or 0.0)
         mpg = round(total_minutes / gp, 1) if gp > 0 else 0.0
         
-        # --- BLAKE WESLEY / HAYALET OYUNCU FİLTRESİ ---
         if gp == 0:
             total_points = 0.0
             form_val = 0.0
