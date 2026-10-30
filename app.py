@@ -16,21 +16,18 @@ st.markdown("""
     
     /* --- YENİ: GECE PARKESİ (KARANLIK NBA STADYUMU) ARKA PLANI --- */
     .stApp {
-        /* Yüksek çözünürlüklü stadyum görseli ve üzerine %90 karanlık siber filtre */
         background-image: linear-gradient(rgba(15, 23, 42, 0.90), rgba(10, 15, 30, 0.96)), url("https://images.unsplash.com/photo-1518063319789-7217e6706b04?q=80&w=2500&auto=format&fit=crop");
         background-size: cover;
         background-position: center;
         background-attachment: fixed;
     }
     
-    /* Tablo ve blokların arka planlarının sahaya uyum sağlaması için şeffaflık */
     .block-container {
         padding-top: 1.5rem !important;
         padding-bottom: 0rem !important;
         background: transparent !important;
     }
     
-    /* --- BAŞLIK, LOGO VE ROZETLER --- */
     .custom-header-container {
         display: flex;
         align-items: center;
@@ -48,7 +45,7 @@ st.markdown("""
         font-weight: 800;
         line-height: 1.2;
         letter-spacing: -0.5px;
-        text-shadow: 0px 4px 15px rgba(0,0,0,0.5); /* Yazıların arka planda kaybolmaması için gölge */
+        text-shadow: 0px 4px 15px rgba(0,0,0,0.5); 
     }
     .header-thin {
         font-weight: 300;
@@ -67,7 +64,7 @@ st.markdown("""
         font-weight: 800;
         letter-spacing: 0.5px;
         margin-left: 20px; 
-        backdrop-filter: blur(4px); /* Cam efekti */
+        backdrop-filter: blur(4px); 
     }
     .blinking-dot {
         width: 8px;
@@ -98,13 +95,12 @@ st.markdown("""
         backdrop-filter: blur(4px);
     }
 
-    /* --- 4'LÜ ESPOR METRİK KARTLARI --- */
     .esport-card {
         border-left: 3px solid #38bdf8;
         padding-left: 12px;
         margin-top: 5px;
         margin-bottom: 15px;
-        background: rgba(15, 23, 42, 0.4); /* Kartların arkasını hafif karartır */
+        background: rgba(15, 23, 42, 0.4); 
         padding: 10px;
         border-radius: 0 8px 8px 0;
         backdrop-filter: blur(2px);
@@ -138,7 +134,6 @@ st.markdown("""
         border: 1px solid;
     }
 
-    /* --- GHOST FİLTRE PANELİ VE RESET BUTONU CSS --- */
     div[data-baseweb="select"] > div, 
     div[data-baseweb="input"] > div {
         background-color: rgba(15, 23, 42, 0.5) !important;
@@ -192,7 +187,6 @@ st.markdown("""
         color: #ffffff !important;
     }
     
-    /* --- BORSA / SKOR BANDI (TICKER) CSS --- */
     .ticker-container {
         width: 100%;
         overflow: hidden;
@@ -415,8 +409,16 @@ def fetch_live_fantasy_data():
             
         total_minutes = float(el.get("minutes", 0.0) or 0.0)
         mpg = round(total_minutes / gp, 1) if gp > 0 else 0.0
-        value_ratio = round(total_points / cost, 2) if cost > 0 else 0.0
-        firsat_index = round(form_val / cost, 2) if cost > 0 else 0.0
+        
+        # --- BLAKE WESLEY / HAYALET OYUNCU FİLTRESİ ---
+        if gp == 0:
+            total_points = 0.0
+            form_val = 0.0
+            ppg_val = 0.0
+        # -----------------------------------------------
+            
+        value_ratio = round(total_points / cost, 2) if cost > 0 and gp > 0 else 0.0
+        firsat_index = round(form_val / cost, 2) if cost > 0 and gp > 0 else 0.0
         
         availability = int(round((gp / team_games) * 100)) if team_games > 0 else 0
         
