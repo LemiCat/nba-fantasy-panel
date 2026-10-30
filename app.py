@@ -209,13 +209,22 @@ st.markdown("""
     .ticker-label-select:hover { background-color: #dc2626; }
     
     .ticker-content {
-        white-space: nowrap; animation: ticker 20s linear infinite; color: #e2e8f0;
-        font-family: monospace; font-size: 14px; font-weight: 600; padding-left: 100%;
-        display: flex; align-items: center; height: 34px;
+        white-space: nowrap; 
+        animation: ticker 30s linear infinite; 
+        color: #e2e8f0;
+        font-family: monospace; 
+        font-size: 14px; 
+        font-weight: 600; 
+        padding-left: 100%;
+        display: inline-block; 
+        line-height: 34px; 
     }
     .ticker-content:hover { animation-play-state: paused; }
     
-    #view-standings { display: none; padding: 45px 20px 20px 20px; }
+    @keyframes ticker { 
+        0% { transform: translate3d(0, 0, 0); } 
+        100% { transform: translate3d(-100%, 0, 0); } 
+    }
     
     /* Tıklama Tetikleyicileri (Gizli Checkbox Hack) */
     #toggle-standings:checked ~ .ticker-container #view-standings { display: block; }
@@ -345,13 +354,20 @@ west_html = build_standings_html(west_data, "BATI KONFERANSI")
 def fetch_live_fantasy_data():
     url = "https://tr.nbafantasy.nba.com/api/bootstrap-static/"
     res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=15).json()
-    teams = {t["id"]: t.get("short_name", t["name"]) for t in res["teams"]}
     
+    # 1. BÜYÜK HARF ZORLAMASI
+    teams = {t["id"]: str(t.get("short_name", t["name"])).strip().upper() for t in res["teams"]}
+    
+    # 2. GELİŞMİŞ LOGO EŞLEŞTİRİCİ (Alternatif Kısaltmaları Çözer)
+    def get_logo(team_raw):
+        t = str(team_raw).upper()
+        aliases = {"GS": "GSW", "NO": "NOP", "NY": "NYK", "SA": "SAS", "UTAH": "UTA", "WSH": "WAS"}
+        return TEAM_LOGOS.get(aliases.get(t, t), "")
+
     ticker_html_text = ""
     try:
         url_fix = "https://tr.nbafantasy.nba.com/api/fixtures/"
         res_fix = requests.get(url_fix, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10).json()
-        
         valid_fixtures = [m for m in res_fix if m.get('kickoff_time')]
         valid_fixtures.sort(key=lambda x: x['kickoff_time'])
         
@@ -377,15 +393,15 @@ def fetch_live_fantasy_data():
                 h_team = teams.get(m['team_h'], "EV")
                 a_team = teams.get(m['team_a'], "DEP")
                 
-                # BÜYÜK/KÜÇÜK HARF (UPPERCASE) KORUMASI EKLENDİ
-                h_logo = TEAM_LOGOS.get(str(h_team).upper(), "")
-                a_logo = TEAM_LOGOS.get(str(a_team).upper(), "")
+                h_logo = get_logo(h_team)
+                a_logo = get_logo(a_team)
                 
-                h_img = f"<img src='{h_logo}' class='ticker-logo'>" if h_logo else ""
-                a_img = f"<img src='{a_logo}' class='ticker-logo'>" if a_logo else ""
+                # CSS Bağımsız Satır İçi (Inline) Logo Stilleri
+                h_img = f"<img src='{h_logo}' style='height:22px; width:auto; vertical-align:middle; margin:0 6px;'>" if h_logo else ""
+                a_img = f"<img src='{a_logo}' style='height:22px; width:auto; vertical-align:middle; margin:0 6px;'>" if a_logo else ""
+                
                 h_score = m.get('team_h_score', 0)
                 a_score = m.get('team_a_score', 0)
-                
                 ticker_items.append(f"{h_team} {h_img} <span class='score-hl'>{h_score} - {a_score}</span> {a_img} {a_team}")
         
         if recent_finished and next_upcoming:
@@ -397,12 +413,11 @@ def fetch_live_fantasy_data():
                 h_team = teams.get(m['team_h'], "EV")
                 a_team = teams.get(m['team_a'], "DEP")
                 
-                # BÜYÜK/KÜÇÜK HARF (UPPERCASE) KORUMASI EKLENDİ
-                h_logo = TEAM_LOGOS.get(str(h_team).upper(), "")
-                a_logo = TEAM_LOGOS.get(str(a_team).upper(), "")
+                h_logo = get_logo(h_team)
+                a_logo = get_logo(a_team)
                 
-                h_img = f"<img src='{h_logo}' class='ticker-logo'>" if h_logo else ""
-                a_img = f"<img src='{a_logo}' class='ticker-logo'>" if a_logo else ""
+                h_img = f"<img src='{h_logo}' style='height:22px; width:auto; vertical-align:middle; margin:0 6px;'>" if h_logo else ""
+                a_img = f"<img src='{a_logo}' style='height:22px; width:auto; vertical-align:middle; margin:0 6px;'>" if a_logo else ""
                 
                 kickoff = m.get('kickoff_time')
                 time_str = "VS"
@@ -417,40 +432,27 @@ def fetch_live_fantasy_data():
                 ticker_items.append(f"{h_team} {h_img} <span class='time-hl'>{time_str}</span> {a_img} {a_team}")
                 
         ticker_html_text = " &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ".join(ticker_items)
-        
     except Exception:
         ticker_html_text = "CANLI SKOR BAĞLANTISI BEKLENİYOR..."
     
     team_max_games = {team_name: 0 for team_name in teams.values()}
     for el in res["elements"]:
-        if el.get("status") in ["u"]:
-            continue
+        if el.get("status") in ["u"]: continue
         team_name = teams.get(el["team"], "NBA")
-        tp_raw = float(el.get("total_points", 0.0) or 0.0)
-        tp = round(tp_raw / 10.0, 1)
-        ppg_raw = float(el.get("points_per_game", 0.0) or 0.0)
-        ppg = round(ppg_raw / 10.0, 1)
+        tp = round(float(el.get("total_points", 0.0) or 0.0) / 10.0, 1)
+        ppg = round(float(el.get("points_per_game", 0.0) or 0.0) / 10.0, 1)
         gp = int(round(tp / ppg)) if ppg > 0 else 0
-        if gp > team_max_games[team_name]:
-            team_max_games[team_name] = gp
+        if gp > team_max_games[team_name]: team_max_games[team_name] = gp
 
     player_list = []
     for el in res["elements"]:
-        if el.get("status") in ["u"]:
-            continue
-            
+        if el.get("status") in ["u"]: continue
         full_name = f"{el['first_name']} {el['second_name']}"
         team_name = teams.get(el["team"], "NBA")
         cost = float(el.get("now_cost", el.get("cost", 0))) / 10.0
-        
-        form_raw = float(el.get("form", 0.0) or 0.0)
-        form_val = round(form_raw / 10.0, 1)
-        
-        tp_raw = float(el.get("total_points", 0.0) or 0.0)
-        total_points = round(tp_raw / 10.0, 1)
-        
-        ppg_raw = float(el.get("points_per_game", 0.0) or 0.0)
-        ppg_val = round(ppg_raw / 10.0, 1)
+        form_val = round(float(el.get("form", 0.0) or 0.0) / 10.0, 1)
+        total_points = round(float(el.get("total_points", 0.0) or 0.0) / 10.0, 1)
+        ppg_val = round(float(el.get("points_per_game", 0.0) or 0.0) / 10.0, 1)
         
         gp = int(round(total_points / ppg_val)) if ppg_val > 0 else 0
         team_games = team_max_games[team_name]
@@ -458,36 +460,18 @@ def fetch_live_fantasy_data():
         if gp > 0 and team_games > 0 and gp < team_games:
             form_val = round(form_val * (team_games / gp), 1)
             
-        total_minutes = float(el.get("minutes", 0.0) or 0.0)
-        mpg = round(total_minutes / gp, 1) if gp > 0 else 0.0
-        
-        if gp == 0:
-            total_points = 0.0
-            form_val = 0.0
-            ppg_val = 0.0
+        mpg = round(float(el.get("minutes", 0.0) or 0.0) / gp, 1) if gp > 0 else 0.0
+        if gp == 0: total_points = form_val = ppg_val = 0.0
             
-        value_ratio = round(total_points / cost, 2) if cost > 0 and gp > 0 else 0.0
-        firsat_index = round(form_val / cost, 2) if cost > 0 and gp > 0 else 0.0
-        
-        availability = int(round((gp / team_games) * 100)) if team_games > 0 else 0
-        
         player_list.append({
-            "Oyuncu": full_name,
-            "Mevki": "BC" if el["element_type"] == 1 else "FC",
-            "Takım": team_name,
-            "Fiyat (M$)": cost,
-            "Dk/Maç": mpg,
-            "Maç (Dev%)": f"{gp} (%{availability})",
-            "Toplam FP": total_points,
-            "FP Ort. (PPG)": ppg_val,
-            "Form": form_val,
-            "Value": value_ratio,
-            "Fırsat": firsat_index,
+            "Oyuncu": full_name, "Mevki": "BC" if el["element_type"] == 1 else "FC", "Takım": team_name,
+            "Fiyat (M$)": cost, "Dk/Maç": mpg, "Maç (Dev%)": f"{gp} (%{int(round((gp / team_games) * 100)) if team_games > 0 else 0})",
+            "Toplam FP": total_points, "FP Ort. (PPG)": ppg_val, "Form": form_val,
+            "Value": round(total_points / cost, 2) if cost > 0 and gp > 0 else 0.0,
+            "Fırsat": round(form_val / cost, 2) if cost > 0 and gp > 0 else 0.0,
             "_Mac_Siralama": gp
         })
-        
-    df = pd.DataFrame(player_list)
-    return df, ticker_html_text
+    return pd.DataFrame(player_list), ticker_html_text
 
 try:
     df, ticker_text = fetch_live_fantasy_data()
