@@ -14,7 +14,7 @@ st.markdown("""
     header {visibility: hidden;}
     [data-testid="collapsedControl"] {display: none;}
     
-    /* --- YENİ: GECE PARKESİ (KARANLIK NBA STADYUMU) ARKA PLANI --- */
+    /* --- GECE PARKESİ (KARANLIK NBA STADYUMU) ARKA PLANI --- */
     .stApp {
         background-image: linear-gradient(rgba(15, 23, 42, 0.90), rgba(10, 15, 30, 0.96)), url("https://images.unsplash.com/photo-1518063319789-7217e6706b04?q=80&w=2500&auto=format&fit=crop");
         background-size: cover;
@@ -28,6 +28,7 @@ st.markdown("""
         background: transparent !important;
     }
     
+    /* --- BAŞLIK, LOGO VE ROZETLER --- */
     .custom-header-container {
         display: flex;
         align-items: center;
@@ -95,6 +96,7 @@ st.markdown("""
         backdrop-filter: blur(4px);
     }
 
+    /* --- 4'LÜ ESPOR METRİK KARTLARI --- */
     .esport-card {
         border-left: 3px solid #38bdf8;
         padding-left: 12px;
@@ -134,6 +136,7 @@ st.markdown("""
         border: 1px solid;
     }
 
+    /* --- GHOST FİLTRE PANELİ VE RESET BUTONU --- */
     div[data-baseweb="select"] > div, 
     div[data-baseweb="input"] > div {
         background-color: rgba(15, 23, 42, 0.5) !important;
@@ -187,89 +190,68 @@ st.markdown("""
         color: #ffffff !important;
     }
     
-    /* --- YENİ: DİNAMİK PUAN DURUMU (STANDINGS) VE TICKER DROPDOWN CSS --- */
+    /* =========================================================
+       YENİ: SIFIR JAVASCRIPT, SAF CSS PUAN DURUMU HACKİ
+       ========================================================= */
     .ticker-container {
-        width: 100%;
-        overflow: hidden; 
-        background-color: rgba(15, 23, 42, 0.6); 
-        border-top: 1px solid rgba(56, 189, 248, 0.2);
-        border-bottom: 1px solid rgba(56, 189, 248, 0.2);
-        margin-top: 10px;
-        margin-bottom: 20px;
-        position: relative;
-        border-radius: 4px;
-        backdrop-filter: blur(6px);
-        min-height: 34px;
-        transition: all 0.3s ease;
-    }
-    
-    .ticker-dropdown-wrapper {
-        position: absolute;
-        left: 0;
-        top: 0;
-        z-index: 20;
-        height: 34px;
-        border-right: 2px solid #0f172a;
+        width: 100%; overflow: hidden; background-color: rgba(15, 23, 42, 0.6); 
+        border-top: 1px solid rgba(56, 189, 248, 0.2); border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+        margin-top: 10px; margin-bottom: 20px; position: relative; border-radius: 4px;
+        backdrop-filter: blur(6px); min-height: 34px; transition: all 0.3s ease;
     }
     
     .ticker-label-select {
-        background-color: #ef4444;
-        color: #ffffff;
-        font-size: 11px;
-        font-weight: 900;
-        letter-spacing: 1px;
-        padding: 0px 24px 0px 14px;
-        height: 100%;
-        border: none;
-        outline: none;
-        cursor: pointer;
-        appearance: none;
-        -webkit-appearance: none;
-        background-image: url('data:image/svg+xml;utf8,<svg fill="%23ffffff" height="14" viewBox="0 0 24 24" width="14" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>');
-        background-repeat: no-repeat;
-        background-position: right 6px center;
-        transition: 0.2s;
+        position: absolute; left: 0; top: 0; z-index: 20; height: 34px;
+        background-color: #ef4444; color: #ffffff; font-size: 11px; font-weight: 900;
+        letter-spacing: 1px; padding: 0 14px; display: flex; align-items: center;
+        cursor: pointer; border-right: 2px solid #0f172a; transition: 0.2s;
     }
-    .ticker-label-select option {
-        background-color: #0f172a;
-        color: #fff;
-    }
+    .ticker-label-select:hover { background-color: #dc2626; }
     
     .ticker-content {
-        white-space: nowrap;
-        animation: ticker 50s linear infinite;
-        color: #e2e8f0;
-        font-family: monospace;
-        font-size: 14px;
-        font-weight: 600;
-        padding-left: 100%;
-        display: flex;
-        align-items: center;
-        height: 34px;
+        white-space: nowrap; animation: ticker 50s linear infinite; color: #e2e8f0;
+        font-family: monospace; font-size: 14px; font-weight: 600; padding-left: 100%;
+        display: flex; align-items: center; height: 34px;
     }
     .ticker-content:hover { animation-play-state: paused; }
+    
+    #view-standings { display: none; padding: 45px 20px 20px 20px; }
+    
+    /* Tıklama Tetikleyicileri (Gizli Checkbox Hack) */
+    #toggle-standings:checked ~ .ticker-container #view-standings { display: block; }
+    #toggle-standings:checked ~ .ticker-container #view-ticker { display: none; }
+    #toggle-standings:checked ~ .ticker-container .ticker-label-select { background-color: #3b82f6; }
+    #toggle-standings:checked ~ .ticker-container .ticker-label-select:hover { background-color: #2563eb; }
+    
+    .lbl-puan { display: none; }
+    #toggle-standings:checked ~ .ticker-container .lbl-skor { display: none; }
+    #toggle-standings:checked ~ .ticker-container .lbl-puan { display: inline; }
+    
+    .conf-east-content, .conf-west-content { display: none; }
+    #tab-east:checked ~ .st-tabs ~ .conf-east-content { display: block; }
+    #tab-west:checked ~ .st-tabs ~ .conf-west-content { display: block; }
+    
+    #tab-east:checked ~ .st-tabs .tab-label-east { background: #3b82f6; border-color: #3b82f6; color: white; }
+    #tab-west:checked ~ .st-tabs .tab-label-west { background: #3b82f6; border-color: #3b82f6; color: white; }
+    
+    .st-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+    .st-tab {
+        background: transparent; border: 1px solid rgba(255,255,255,0.1); color: #94a3b8; 
+        padding: 6px 16px; border-radius: 4px; font-weight: 700; font-size: 11px; 
+        cursor: pointer; transition: 0.2s; letter-spacing: 0.5px; user-select: none;
+    }
+    .st-tab:hover { background: rgba(255,255,255,0.05); }
+    
+    .st-table { width: 100%; border-collapse: collapse; font-size: 13px; color: #cbd5e1; }
+    .st-table th { text-align: left; padding: 8px 10px; color: #94a3b8; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 11px; font-weight: 800; text-transform: uppercase; }
+    .st-table td { padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+    .st-table tr:hover { background: rgba(255,255,255,0.02); }
     
     .score-hl { color: #ffffff; font-weight: 900; margin: 0 4px; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; font-size: 13px; }
     .time-hl { color: #7dd3fc; font-weight: 900; margin: 0 4px; background: rgba(56, 189, 248, 0.15); padding: 2px 6px; border-radius: 4px; font-size: 13px; }
     .ticker-logo { height: 22px; width: auto; vertical-align: middle; margin: 0 6px; }
     .ticker-category { color: #94a3b8; font-weight: 800; letter-spacing: 1px; margin: 0 15px; }
     @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
-
-    /* PUAN DURUMU TABLOLARI VE SEKMELERİ (TABS) */
-    .st-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
-    .st-tab {
-        background: transparent; border: 1px solid rgba(255,255,255,0.1);
-        color: #94a3b8; padding: 6px 16px; border-radius: 4px;
-        font-weight: 700; font-size: 11px; cursor: pointer; transition: 0.2s;
-        letter-spacing: 0.5px;
-    }
-    .st-tab:hover { background: rgba(255,255,255,0.05); }
-    .st-tab.active { background: #3b82f6; border-color: #3b82f6; color: white; }
-    
-    .st-table { width: 100%; border-collapse: collapse; font-size: 13px; color: #cbd5e1; }
-    .st-table th { text-align: left; padding: 8px 10px; color: #94a3b8; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 11px; font-weight: 800; text-transform: uppercase; }
-    .st-table td { padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.03); }
-    .st-table tr:hover { background: rgba(255,255,255,0.02); }
     </style>
 """, unsafe_allow_html=True)
 
@@ -626,52 +608,9 @@ if not sorted_table.empty:
 
 # ==========================================
 # İNTERAKTİF HTML: DROPDOWN & PUAN DURUMU (STANDINGS)
+# Markdown Parse hatasını önlemek için boşluksuz saf HTML ve Checkbox Hack
 # ==========================================
-html_block = f"""
-<div class="ticker-container">
-    <div class="ticker-dropdown-wrapper">
-        <select class="ticker-label-select" onchange="
-            if(this.value === 'standings') {{
-                document.getElementById('view-ticker').style.display = 'none';
-                document.getElementById('view-standings').style.display = 'block';
-                this.style.backgroundColor = '#3b82f6';
-            }} else {{
-                document.getElementById('view-ticker').style.display = 'flex';
-                document.getElementById('view-standings').style.display = 'none';
-                this.style.backgroundColor = '#ef4444';
-            }}
-        ">
-            <option value="ticker">NBA SKOR ▼</option>
-            <option value="standings">PUAN DURUMU</option>
-        </select>
-    </div>
-    
-    <!-- KAYAR BANT (TICKER) GÖRÜNÜMÜ -->
-    <div class="ticker-content" id="view-ticker">
-        {ticker_text}
-    </div>
-    
-    <!-- PUAN DURUMU (STANDINGS) GÖRÜNÜMÜ -->
-    <div id="view-standings" style="display:none; width:100%; padding: 45px 20px 20px 20px;">
-        <div class="st-tabs">
-            <button class="st-tab active" id="btn-east" onclick="
-                document.getElementById('conf-east').style.display='block';
-                document.getElementById('conf-west').style.display='none';
-                this.classList.add('active');
-                document.getElementById('btn-west').classList.remove('active');
-            ">DOĞU KONFERANSI</button>
-            <button class="st-tab" id="btn-west" onclick="
-                document.getElementById('conf-east').style.display='none';
-                document.getElementById('conf-west').style.display='block';
-                this.classList.add('active');
-                document.getElementById('btn-east').classList.remove('active');
-            ">BATI KONFERANSI</button>
-        </div>
-        <div id="conf-east">{east_html}</div>
-        <div id="conf-west" style="display:none;">{west_html}</div>
-    </div>
-</div>
-"""
+html_block = f"""<div style="position:relative; width:100%;"><input type="checkbox" id="toggle-standings" style="display:none;"><div class="ticker-container"><label for="toggle-standings" class="ticker-label-select"><span class="lbl-skor">NBA SKOR ▼</span><span class="lbl-puan">PUAN DURUMU ✖</span></label><div class="ticker-content" id="view-ticker">{ticker_text}</div><div id="view-standings"><input type="radio" name="conf-tabs" id="tab-east" checked style="display:none;"><input type="radio" name="conf-tabs" id="tab-west" style="display:none;"><div class="st-tabs"><label for="tab-east" class="st-tab tab-label-east">DOĞU KONFERANSI</label><label for="tab-west" class="st-tab tab-label-west">BATI KONFERANSI</label></div><div class="conf-east-content">{east_html}</div><div class="conf-west-content">{west_html}</div></div></div></div>"""
 st.markdown(html_block, unsafe_allow_html=True)
 
 def style_ppg(val): return 'background-color: rgba(168, 85, 247, 0.15); color: #c084fc; font-weight: 700;'
