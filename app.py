@@ -189,6 +189,15 @@ st.markdown("""
         background-color: #ef4444 !important;
         color: #ffffff !important;
     }
+
+    /* Tıklama Tetikleyicileri (Gizli Checkbox Hack) */
+    #toggle-standings:checked ~ .ticker-container #view-standings { display: block !important; }
+    #toggle-standings:checked ~ .ticker-container #view-ticker { display: none !important; }
+    #toggle-standings:checked ~ .ticker-container .ticker-label-select { background-color: #3b82f6 !important; }
+    
+    .lbl-puan { display: none; }
+    #toggle-standings:checked ~ .ticker-container .lbl-skor { display: none; }
+    #toggle-standings:checked ~ .ticker-container .lbl-puan { display: inline; }
     
     /* =========================================================
        YENİ: SIFIR JAVASCRIPT, SAF CSS PUAN DURUMU HACKİ
@@ -614,43 +623,30 @@ if not sorted_table.empty:
 # ==========================================
 # İNTERAKTİF HTML: DROPDOWN & YAN YANA (SIDE-BY-SIDE) PUAN DURUMU
 # ==========================================
-html_block = f"""<div style="position:relative; width:100%;"><input type="checkbox" id="toggle-standings" style="display:none;"><div class="ticker-container"><label for="toggle-standings" class="ticker-label-select"><span class="lbl-skor">NBA SKOR ▼</span><span class="lbl-puan">PUAN DURUMU ✖</span></label><div class="ticker-content" id="view-ticker">{ticker_text}</div><div id="view-standings"><div style="display:flex; gap:20px; width:100%;">{east_html}{west_html}</div><div style="margin-top:15px; display:flex; justify-content:center; gap:20px; font-size:11px; font-weight:700; color:#64748b;"><div style="display:flex; align-items:center; gap:6px;"><div style="width:10px; height:10px; background:#10b981; border-radius:50%;"></div> Doğrudan Playoff (1-6)</div><div style="display:flex; align-items:center; gap:6px;"><div style="width:10px; height:10px; background:#f59e0b; border-radius:50%;"></div> Play-in Turnuvası (7-10)</div></div></div></div></div>"""
+html_block = f"""
+<div style="position:relative; width:100%;">
+    <input type="checkbox" id="toggle-standings" style="display:none;">
+    <div class="ticker-container">
+        <label for="toggle-standings" class="ticker-label-select">
+            <span class="lbl-skor">NBA SKOR ▼</span>
+            <span class="lbl-puan">PUAN DURUMU ✖</span>
+        </label>
+        
+        <div class="ticker-content" id="view-ticker">
+            {ticker_text}
+        </div>
+        
+        <div id="view-standings" style="display:none;">
+            <div style="display:flex; gap:20px; width:100%;">
+                {east_html}
+                {west_html}
+            </div>
+            <div style="margin-top:15px; display:flex; justify-content:center; gap:20px; font-size:11px; font-weight:700; color:#64748b;">
+                <div style="display:flex; align-items:center; gap:6px;"><div style="width:10px; height:10px; background:#10b981; border-radius:50%;"></div> Doğrudan Playoff (1-6)</div>
+                <div style="display:flex; align-items:center; gap:6px;"><div style="width:10px; height:10px; background:#f59e0b; border-radius:50%;"></div> Play-in Turnuvası (7-10)</div>
+            </div>
+        </div>
+    </div>
+</div>
+"""
 st.markdown(html_block, unsafe_allow_html=True)
-
-def style_ppg(val): return 'background-color: rgba(168, 85, 247, 0.15); color: #c084fc; font-weight: 700;'
-def style_form(val): return 'background-color: rgba(249, 115, 22, 0.15); color: #fb923c; font-weight: 700;'
-def style_value(val): return 'background-color: rgba(16, 185, 129, 0.15); color: #34d399; font-weight: 700;'
-def style_firsat(val): return 'background-color: rgba(56, 189, 248, 0.15); color: #7dd3fc; font-weight: 700;'
-
-columns_to_show = ["Oyuncu", "Mevki", "Takım", "Fiyat (M$)", "Dk/Maç", "Maç (Dev%)", "Toplam FP", "FP Ort. (PPG)", "Form", "Value", "Fırsat"]
-display_table = sorted_table[columns_to_show]
-
-try:
-    styled_table = display_table.style\
-        .map(style_ppg, subset=['FP Ort. (PPG)'])\
-        .map(style_form, subset=['Form'])\
-        .map(style_value, subset=['Value'])\
-        .map(style_firsat, subset=['Fırsat'])
-except AttributeError:
-    styled_table = display_table.style\
-        .applymap(style_ppg, subset=['FP Ort. (PPG)'])\
-        .applymap(style_form, subset=['Form'])\
-        .applymap(style_value, subset=['Value'])\
-        .applymap(style_firsat, subset=['Fırsat'])
-
-st.dataframe(
-    styled_table,
-    use_container_width=True,
-    hide_index=True,
-    height=600,
-    column_config={
-        "Fiyat (M$)": st.column_config.NumberColumn(format="%.1f M$"),
-        "Dk/Maç": st.column_config.NumberColumn(format="%.1f"),
-        "Maç (Dev%)": st.column_config.TextColumn("Maç (Dev%)", width="small"),
-        "Toplam FP": st.column_config.NumberColumn(format="%.1f"),
-        "FP Ort. (PPG)": st.column_config.NumberColumn(format="%.1f"),
-        "Form": st.column_config.NumberColumn("Form", format="%.1f"),
-        "Value": st.column_config.NumberColumn("Value (FP/$)", format="%.2f"),
-        "Fırsat": st.column_config.NumberColumn("Fırsat", format="%.2f")
-    }
-)
