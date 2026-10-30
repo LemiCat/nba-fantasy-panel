@@ -189,15 +189,6 @@ st.markdown("""
         background-color: #ef4444 !important;
         color: #ffffff !important;
     }
-
-    /* Tıklama Tetikleyicileri (Gizli Checkbox Hack) */
-    #toggle-standings:checked ~ .ticker-container #view-standings { display: block !important; }
-    #toggle-standings:checked ~ .ticker-container #view-ticker { display: none !important; }
-    #toggle-standings:checked ~ .ticker-container .ticker-label-select { background-color: #3b82f6 !important; }
-    
-    .lbl-puan { display: none; }
-    #toggle-standings:checked ~ .ticker-container .lbl-skor { display: none; }
-    #toggle-standings:checked ~ .ticker-container .lbl-puan { display: inline; }
     
     /* =========================================================
        YENİ: SIFIR JAVASCRIPT, SAF CSS PUAN DURUMU HACKİ
@@ -218,47 +209,23 @@ st.markdown("""
     .ticker-label-select:hover { background-color: #dc2626; }
     
     .ticker-content {
-        white-space: nowrap; 
-        animation: ticker 30s linear infinite; 
-        color: #e2e8f0;
-        font-family: monospace; 
-        font-size: 14px; 
-        font-weight: 600; 
-        padding-left: 100%;
-        display: inline-block; 
-        line-height: 34px; 
+        white-space: nowrap; animation: ticker 30s linear infinite; color: #e2e8f0;
+        font-family: monospace; font-size: 14px; font-weight: 600; padding-left: 100%;
+        display: inline-block; line-height: 34px;
     }
     .ticker-content:hover { animation-play-state: paused; }
     
-    @keyframes ticker { 
-        0% { transform: translate3d(0, 0, 0); } 
-        100% { transform: translate3d(-100%, 0, 0); } 
-    }
+    #view-standings { padding: 45px 20px 20px 20px; }
     
     /* Tıklama Tetikleyicileri (Gizli Checkbox Hack) */
-    #toggle-standings:checked ~ .ticker-container #view-standings { display: block; }
-    #toggle-standings:checked ~ .ticker-container #view-ticker { display: none; }
-    #toggle-standings:checked ~ .ticker-container .ticker-label-select { background-color: #3b82f6; }
-    #toggle-standings:checked ~ .ticker-container .ticker-label-select:hover { background-color: #2563eb; }
+    #toggle-standings:checked ~ .ticker-container #view-standings { display: block !important; }
+    #toggle-standings:checked ~ .ticker-container #view-ticker { display: none !important; }
+    #toggle-standings:checked ~ .ticker-container .ticker-label-select { background-color: #3b82f6 !important; }
+    #toggle-standings:checked ~ .ticker-container .ticker-label-select:hover { background-color: #2563eb !important; }
     
     .lbl-puan { display: none; }
     #toggle-standings:checked ~ .ticker-container .lbl-skor { display: none; }
     #toggle-standings:checked ~ .ticker-container .lbl-puan { display: inline; }
-    
-    .conf-east-content, .conf-west-content { display: none; }
-    #tab-east:checked ~ .st-tabs ~ .conf-east-content { display: block; }
-    #tab-west:checked ~ .st-tabs ~ .conf-west-content { display: block; }
-    
-    #tab-east:checked ~ .st-tabs .tab-label-east { background: #3b82f6; border-color: #3b82f6; color: white; }
-    #tab-west:checked ~ .st-tabs .tab-label-west { background: #3b82f6; border-color: #3b82f6; color: white; }
-    
-    .st-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
-    .st-tab {
-        background: transparent; border: 1px solid rgba(255,255,255,0.1); color: #94a3b8; 
-        padding: 6px 16px; border-radius: 4px; font-weight: 700; font-size: 11px; 
-        cursor: pointer; transition: 0.2s; letter-spacing: 0.5px; user-select: none;
-    }
-    .st-tab:hover { background: rgba(255,255,255,0.05); }
     
     .st-table { width: 100%; border-collapse: collapse; font-size: 13px; color: #cbd5e1; }
     .st-table th { text-align: left; padding: 8px 10px; color: #94a3b8; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 11px; font-weight: 800; text-transform: uppercase; }
@@ -269,7 +236,7 @@ st.markdown("""
     .time-hl { color: #7dd3fc; font-weight: 900; margin: 0 4px; background: rgba(56, 189, 248, 0.15); padding: 2px 6px; border-radius: 4px; font-size: 13px; }
     .ticker-logo { height: 22px; width: auto; vertical-align: middle; margin: 0 6px; }
     .ticker-category { color: #94a3b8; font-weight: 800; letter-spacing: 1px; margin: 0 15px; }
-    @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+    @keyframes ticker { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
     </style>
 """, unsafe_allow_html=True)
 
@@ -301,7 +268,6 @@ def get_nba_matchday(kickoff_str):
 
 @st.cache_data(show_spinner=False, ttl=1800)
 def fetch_nba_standings():
-    # ESPN altyapısından Doğrudan Doğu/Batı Anlık Puan Durumu Çekimi
     try:
         url = "https://site.api.espn.com/apis/v2/sports/basketball/nba/standings"
         res = requests.get(url, timeout=10).json()
@@ -311,8 +277,6 @@ def fetch_nba_standings():
             for t in child.get("standings", {}).get("entries", []):
                 stats = {s["name"]: s["displayValue"] for s in t["stats"]}
                 team = t["team"]
-                
-                # Sayısal sıralama yapabilmek için pct ve wins değerlerini float/int'e çeviriyoruz
                 win_pct_val = float(stats.get("winPercent", "0"))
                 wins_val = int(stats.get("wins", "0"))
                 
@@ -332,10 +296,8 @@ def fetch_nba_standings():
                 else:
                     west.append(row)
                     
-        # Önce Kazanma Yüzdesine, eşitlik varsa Galibiyet sayısına göre büyükten küçüğe sıralama
         east = sorted(east, key=lambda x: (x["_sort_pct"], x["_sort_wins"]), reverse=True)
         west = sorted(west, key=lambda x: (x["_sort_pct"], x["_sort_wins"]), reverse=True)
-        
         return east, west
     except Exception:
         return [], []
@@ -364,10 +326,9 @@ def fetch_live_fantasy_data():
     url = "https://tr.nbafantasy.nba.com/api/bootstrap-static/"
     res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=15).json()
     
-    # 1. BÜYÜK HARF ZORLAMASI
+    # BÜYÜK HARF ZORLAMASI VE KISALTMA ÇEVİRİCİSİ
     teams = {t["id"]: str(t.get("short_name", t["name"])).strip().upper() for t in res["teams"]}
     
-    # 2. GELİŞMİŞ LOGO EŞLEŞTİRİCİ (Alternatif Kısaltmaları Çözer)
     def get_logo(team_raw):
         t = str(team_raw).upper()
         aliases = {"GS": "GSW", "NO": "NOP", "NY": "NYK", "SA": "SAS", "UTAH": "UTA", "WSH": "WAS"}
@@ -377,6 +338,7 @@ def fetch_live_fantasy_data():
     try:
         url_fix = "https://tr.nbafantasy.nba.com/api/fixtures/"
         res_fix = requests.get(url_fix, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10).json()
+        
         valid_fixtures = [m for m in res_fix if m.get('kickoff_time')]
         valid_fixtures.sort(key=lambda x: x['kickoff_time'])
         
@@ -405,12 +367,11 @@ def fetch_live_fantasy_data():
                 h_logo = get_logo(h_team)
                 a_logo = get_logo(a_team)
                 
-                # CSS Bağımsız Satır İçi (Inline) Logo Stilleri
                 h_img = f"<img src='{h_logo}' style='height:22px; width:auto; vertical-align:middle; margin:0 6px;'>" if h_logo else ""
                 a_img = f"<img src='{a_logo}' style='height:22px; width:auto; vertical-align:middle; margin:0 6px;'>" if a_logo else ""
-                
                 h_score = m.get('team_h_score', 0)
                 a_score = m.get('team_a_score', 0)
+                
                 ticker_items.append(f"{h_team} {h_img} <span class='score-hl'>{h_score} - {a_score}</span> {a_img} {a_team}")
         
         if recent_finished and next_upcoming:
@@ -441,27 +402,40 @@ def fetch_live_fantasy_data():
                 ticker_items.append(f"{h_team} {h_img} <span class='time-hl'>{time_str}</span> {a_img} {a_team}")
                 
         ticker_html_text = " &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ".join(ticker_items)
+        
     except Exception:
         ticker_html_text = "CANLI SKOR BAĞLANTISI BEKLENİYOR..."
     
     team_max_games = {team_name: 0 for team_name in teams.values()}
     for el in res["elements"]:
-        if el.get("status") in ["u"]: continue
+        if el.get("status") in ["u"]:
+            continue
         team_name = teams.get(el["team"], "NBA")
-        tp = round(float(el.get("total_points", 0.0) or 0.0) / 10.0, 1)
-        ppg = round(float(el.get("points_per_game", 0.0) or 0.0) / 10.0, 1)
+        tp_raw = float(el.get("total_points", 0.0) or 0.0)
+        tp = round(tp_raw / 10.0, 1)
+        ppg_raw = float(el.get("points_per_game", 0.0) or 0.0)
+        ppg = round(ppg_raw / 10.0, 1)
         gp = int(round(tp / ppg)) if ppg > 0 else 0
-        if gp > team_max_games[team_name]: team_max_games[team_name] = gp
+        if gp > team_max_games[team_name]:
+            team_max_games[team_name] = gp
 
     player_list = []
     for el in res["elements"]:
-        if el.get("status") in ["u"]: continue
+        if el.get("status") in ["u"]:
+            continue
+            
         full_name = f"{el['first_name']} {el['second_name']}"
         team_name = teams.get(el["team"], "NBA")
         cost = float(el.get("now_cost", el.get("cost", 0))) / 10.0
-        form_val = round(float(el.get("form", 0.0) or 0.0) / 10.0, 1)
-        total_points = round(float(el.get("total_points", 0.0) or 0.0) / 10.0, 1)
-        ppg_val = round(float(el.get("points_per_game", 0.0) or 0.0) / 10.0, 1)
+        
+        form_raw = float(el.get("form", 0.0) or 0.0)
+        form_val = round(form_raw / 10.0, 1)
+        
+        tp_raw = float(el.get("total_points", 0.0) or 0.0)
+        total_points = round(tp_raw / 10.0, 1)
+        
+        ppg_raw = float(el.get("points_per_game", 0.0) or 0.0)
+        ppg_val = round(ppg_raw / 10.0, 1)
         
         gp = int(round(total_points / ppg_val)) if ppg_val > 0 else 0
         team_games = team_max_games[team_name]
@@ -469,18 +443,36 @@ def fetch_live_fantasy_data():
         if gp > 0 and team_games > 0 and gp < team_games:
             form_val = round(form_val * (team_games / gp), 1)
             
-        mpg = round(float(el.get("minutes", 0.0) or 0.0) / gp, 1) if gp > 0 else 0.0
-        if gp == 0: total_points = form_val = ppg_val = 0.0
+        total_minutes = float(el.get("minutes", 0.0) or 0.0)
+        mpg = round(total_minutes / gp, 1) if gp > 0 else 0.0
+        
+        if gp == 0:
+            total_points = 0.0
+            form_val = 0.0
+            ppg_val = 0.0
             
+        value_ratio = round(total_points / cost, 2) if cost > 0 and gp > 0 else 0.0
+        firsat_index = round(form_val / cost, 2) if cost > 0 and gp > 0 else 0.0
+        
+        availability = int(round((gp / team_games) * 100)) if team_games > 0 else 0
+        
         player_list.append({
-            "Oyuncu": full_name, "Mevki": "BC" if el["element_type"] == 1 else "FC", "Takım": team_name,
-            "Fiyat (M$)": cost, "Dk/Maç": mpg, "Maç (Dev%)": f"{gp} (%{int(round((gp / team_games) * 100)) if team_games > 0 else 0})",
-            "Toplam FP": total_points, "FP Ort. (PPG)": ppg_val, "Form": form_val,
-            "Value": round(total_points / cost, 2) if cost > 0 and gp > 0 else 0.0,
-            "Fırsat": round(form_val / cost, 2) if cost > 0 and gp > 0 else 0.0,
+            "Oyuncu": full_name,
+            "Mevki": "BC" if el["element_type"] == 1 else "FC",
+            "Takım": team_name,
+            "Fiyat (M$)": cost,
+            "Dk/Maç": mpg,
+            "Maç (Dev%)": f"{gp} (%{availability})",
+            "Toplam FP": total_points,
+            "FP Ort. (PPG)": ppg_val,
+            "Form": form_val,
+            "Value": value_ratio,
+            "Fırsat": firsat_index,
             "_Mac_Siralama": gp
         })
-    return pd.DataFrame(player_list), ticker_html_text
+        
+    df = pd.DataFrame(player_list)
+    return df, ticker_html_text
 
 try:
     df, ticker_text = fetch_live_fantasy_data()
@@ -623,30 +615,43 @@ if not sorted_table.empty:
 # ==========================================
 # İNTERAKTİF HTML: DROPDOWN & YAN YANA (SIDE-BY-SIDE) PUAN DURUMU
 # ==========================================
-html_block = f"""
-<div style="position:relative; width:100%;">
-    <input type="checkbox" id="toggle-standings" style="display:none;">
-    <div class="ticker-container">
-        <label for="toggle-standings" class="ticker-label-select">
-            <span class="lbl-skor">NBA SKOR ▼</span>
-            <span class="lbl-puan">PUAN DURUMU ✖</span>
-        </label>
-        
-        <div class="ticker-content" id="view-ticker">
-            {ticker_text}
-        </div>
-        
-        <div id="view-standings" style="display:none;">
-            <div style="display:flex; gap:20px; width:100%;">
-                {east_html}
-                {west_html}
-            </div>
-            <div style="margin-top:15px; display:flex; justify-content:center; gap:20px; font-size:11px; font-weight:700; color:#64748b;">
-                <div style="display:flex; align-items:center; gap:6px;"><div style="width:10px; height:10px; background:#10b981; border-radius:50%;"></div> Doğrudan Playoff (1-6)</div>
-                <div style="display:flex; align-items:center; gap:6px;"><div style="width:10px; height:10px; background:#f59e0b; border-radius:50%;"></div> Play-in Turnuvası (7-10)</div>
-            </div>
-        </div>
-    </div>
-</div>
-"""
+html_block = f"""<div style="position:relative; width:100%;"><input type="checkbox" id="toggle-standings" style="display:none;"><div class="ticker-container"><label for="toggle-standings" class="ticker-label-select"><span class="lbl-skor">NBA SKOR ▼</span><span class="lbl-puan">PUAN DURUMU ✖</span></label><div class="ticker-content" id="view-ticker">{ticker_text}</div><div id="view-standings" style="display:none;"><div style="display:flex; gap:20px; width:100%;">{east_html}{west_html}</div><div style="margin-top:15px; display:flex; justify-content:center; gap:20px; font-size:11px; font-weight:700; color:#64748b;"><div style="display:flex; align-items:center; gap:6px;"><div style="width:10px; height:10px; background:#10b981; border-radius:50%;"></div> Doğrudan Playoff (1-6)</div><div style="display:flex; align-items:center; gap:6px;"><div style="width:10px; height:10px; background:#f59e0b; border-radius:50%;"></div> Play-in Turnuvası (7-10)</div></div></div></div></div>"""
 st.markdown(html_block, unsafe_allow_html=True)
+
+def style_ppg(val): return 'background-color: rgba(168, 85, 247, 0.15); color: #c084fc; font-weight: 700;'
+def style_form(val): return 'background-color: rgba(249, 115, 22, 0.15); color: #fb923c; font-weight: 700;'
+def style_value(val): return 'background-color: rgba(16, 185, 129, 0.15); color: #34d399; font-weight: 700;'
+def style_firsat(val): return 'background-color: rgba(56, 189, 248, 0.15); color: #7dd3fc; font-weight: 700;'
+
+columns_to_show = ["Oyuncu", "Mevki", "Takım", "Fiyat (M$)", "Dk/Maç", "Maç (Dev%)", "Toplam FP", "FP Ort. (PPG)", "Form", "Value", "Fırsat"]
+display_table = sorted_table[columns_to_show]
+
+try:
+    styled_table = display_table.style\
+        .map(style_ppg, subset=['FP Ort. (PPG)'])\
+        .map(style_form, subset=['Form'])\
+        .map(style_value, subset=['Value'])\
+        .map(style_firsat, subset=['Fırsat'])
+except AttributeError:
+    styled_table = display_table.style\
+        .applymap(style_ppg, subset=['FP Ort. (PPG)'])\
+        .applymap(style_form, subset=['Form'])\
+        .applymap(style_value, subset=['Value'])\
+        .applymap(style_firsat, subset=['Fırsat'])
+
+st.dataframe(
+    styled_table,
+    use_container_width=True,
+    hide_index=True,
+    height=600,
+    column_config={
+        "Fiyat (M$)": st.column_config.NumberColumn(format="%.1f M$"),
+        "Dk/Maç": st.column_config.NumberColumn(format="%.1f"),
+        "Maç (Dev%)": st.column_config.TextColumn("Maç (Dev%)", width="small"),
+        "Toplam FP": st.column_config.NumberColumn(format="%.1f"),
+        "FP Ort. (PPG)": st.column_config.NumberColumn(format="%.1f"),
+        "Form": st.column_config.NumberColumn("Form", format="%.1f"),
+        "Value": st.column_config.NumberColumn("Value (FP/$)", format="%.2f"),
+        "Fırsat": st.column_config.NumberColumn("Fırsat", format="%.2f")
+    }
+)
