@@ -2,6 +2,7 @@ import requests
 import pandas as pd
 import streamlit as st
 import datetime
+import concurrent.futures # YENİ: Gerçek scout matematiği için çoklu işlem kütüphanesi
 
 # 1. Sayfa ve Tema Ayarları
 st.set_page_config(page_title="NBA Fantasy Scout", layout="wide", page_icon="🏀", initial_sidebar_state="collapsed")
@@ -334,6 +335,7 @@ def fetch_live_fantasy_data():
         aliases = {"GS": "GSW", "NO": "NOP", "NY": "NYK", "SA": "SAS", "UTAH": "UTA", "WSH": "WAS"}
         return TEAM_LOGOS.get(aliases.get(t, t), "")
 
+    # 1. CANLI SKOR VE FİKSTÜR ÇEKİMİ
     ticker_html_text = ""
     try:
         url_fix = "https://tr.nbafantasy.nba.com/api/fixtures/"
@@ -357,103 +359,105 @@ def fetch_live_fantasy_data():
             next_upcoming = [m for m in upcoming_matches if get_nba_matchday(m['kickoff_time']) == first_match_date]
             
         ticker_items = []
-        
         if recent_finished:
             ticker_items.append("<span class='ticker-category'>[ SON MAÇ GÜNÜ ]</span>")
             for m in recent_finished:
-                h_team = teams.get(m['team_h'], "EV")
-                a_team = teams.get(m['team_a'], "DEP")
-                
-                h_logo = get_logo(h_team)
-                a_logo = get_logo(a_team)
-                
-                h_img = f"<img src='{h_logo}' style='height:22px; width:auto; vertical-align:middle; margin:0 6px;'>" if h_logo else ""
-                a_img = f"<img src='{a_logo}' style='height:22px; width:auto; vertical-align:middle; margin:0 6px;'>" if a_logo else ""
-                h_score = m.get('team_h_score', 0)
-                a_score = m.get('team_a_score', 0)
-                
-                ticker_items.append(f"{h_team} {h_img} <span class='score-hl'>{h_score} - {a_score}</span> {a_img} {a_team}")
+                h_team, a_team = teams.get(m['team_h'], "EV"), teams.get(m['team_a'], "DEP")
+                h_img = f"<img src='{get_logo(h_team)}' style='height:22px; width:auto; vertical-align:middle; margin:0 6px;'>" if get_logo(h_team) else ""
+                a_img = f"<img src='{get_logo(a_team)}' style='height:22px; width:auto; vertical-align:middle; margin:0 6px;'>" if get_logo(a_team) else ""
+                ticker_items.append(f"{h_team} {h_img} <span class='score-hl'>{m.get('team_h_score', 0)} - {m.get('team_a_score', 0)}</span> {a_img} {a_team}")
         
-        if recent_finished and next_upcoming:
-            ticker_items.append(" &nbsp;&nbsp;&nbsp;✦&nbsp;&nbsp;&nbsp; ")
+        if recent_finished and next_upcoming: ticker_items.append(" &nbsp;&nbsp;&nbsp;✦&nbsp;&nbsp;&nbsp; ")
             
         if next_upcoming:
             ticker_items.append("<span class='ticker-category'>[ SIRADAKİ MAÇ GÜNÜ ]</span>")
             for m in next_upcoming:
-                h_team = teams.get(m['team_h'], "EV")
-                a_team = teams.get(m['team_a'], "DEP")
-                
-                h_logo = get_logo(h_team)
-                a_logo = get_logo(a_team)
-                
-                h_img = f"<img src='{h_logo}' style='height:22px; width:auto; vertical-align:middle; margin:0 6px;'>" if h_logo else ""
-                a_img = f"<img src='{a_logo}' style='height:22px; width:auto; vertical-align:middle; margin:0 6px;'>" if a_logo else ""
-                
-                kickoff = m.get('kickoff_time')
+                h_team, a_team = teams.get(m['team_h'], "EV"), teams.get(m['team_a'], "DEP")
+                h_img = f"<img src='{get_logo(h_team)}' style='height:22px; width:auto; vertical-align:middle; margin:0 6px;'>" if get_logo(h_team) else ""
+                a_img = f"<img src='{get_logo(a_team)}' style='height:22px; width:auto; vertical-align:middle; margin:0 6px;'>" if get_logo(a_team) else ""
                 time_str = "VS"
-                if kickoff:
-                    try:
-                        dt = datetime.datetime.strptime(kickoff, "%Y-%m-%dT%H:%M:%SZ")
-                        dt = dt + datetime.timedelta(hours=3) 
-                        time_str = dt.strftime("%H:%M")
-                    except Exception:
-                        pass
-                
+                if m.get('kickoff_time'):
+                    try: time_str = (datetime.datetime.strptime(m.get('kickoff_time'), "%Y-%m-%dT%H:%M:%SZ") + datetime.timedelta(hours=3)).strftime("%H:%M")
+                    except: pass
                 ticker_items.append(f"{h_team} {h_img} <span class='time-hl'>{time_str}</span> {a_img} {a_team}")
                 
         ticker_html_text = " &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ".join(ticker_items)
-        
     except Exception:
         ticker_html_text = "CANLI SKOR BAĞLANTISI BEKLENİYOR..."
     
+    # 2. YENİ: ASENKRON MAÇ GEÇMİŞİ (FORM) HESAPLAYICISI
+    active_elements = [el for el in res["elements"] if el.get("status") not in ["u"]]
+    
+    def fetch_player_history(el):
+        try:
+            if float(el.get("total_points", 0.0)) == 0: return el["id"], 0.0, 0
+            
+            hist_url = f"https://tr.nbafantasy.nba.com/api/element-summary/{el['id']}/"
+            hist_res = requests.get(hist_url, timeout=4).json()
+            
+            # Yalnızca dakika aldığı (sahaya çıktığı) maçları sayıyoruz
+            played_matches = [m for m in hist_res.get("history", []) if float(m.get("minutes", 0)) > 0]
+            total_gp = len(played_matches)
+            
+            # Gerçek Form Hesabı: OYUNCUNUN SADECE OYNADIĞI SON 5 MAÇIN ORTALAMASI
+            last_5 = played_matches[-5:]
+            if not last_5: return el["id"], 0.0, total_gp
+            
+            total_5_fp = sum(float(m.get("total_points", 0.0)) for m in last_5)
+            true_form = round((total_5_fp / 10.0) / len(last_5), 1)
+            
+            return el["id"], true_form, total_gp
+        except:
+            return el["id"], 0.0, 0
+
+    true_form_data = {}
+    true_gp_data = {}
+    
+    # Tüm aktif oyuncuları paralel (20 kanal) hızla tarıyoruz
+    with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+        futures = {executor.submit(fetch_player_history, el): el for el in active_elements}
+        for future in concurrent.futures.as_completed(futures):
+            el_id, form_val, gp_val = future.result()
+            true_form_data[el_id] = form_val
+            true_gp_data[el_id] = gp_val
+
+    # 3. KULLANICI İSTEĞİNE GÖRE MATEMATİKSEL İNŞA
     team_max_games = {team_name: 0 for team_name in teams.values()}
-    for el in res["elements"]:
-        if el.get("status") in ["u"]:
-            continue
-        team_name = teams.get(el["team"], "NBA")
-        tp_raw = float(el.get("total_points", 0.0) or 0.0)
-        tp = round(tp_raw / 10.0, 1)
-        ppg_raw = float(el.get("points_per_game", 0.0) or 0.0)
-        ppg = round(ppg_raw / 10.0, 1)
-        gp = int(round(tp / ppg)) if ppg > 0 else 0
-        if gp > team_max_games[team_name]:
-            team_max_games[team_name] = gp
+    for el_id, gp in true_gp_data.items():
+        el = next((e for e in active_elements if e["id"] == el_id), None)
+        if el:
+            t_name = teams.get(el["team"], "NBA")
+            if gp > team_max_games[t_name]: team_max_games[t_name] = gp
 
     player_list = []
-    for el in res["elements"]:
-        if el.get("status") in ["u"]:
-            continue
-            
+    for el in active_elements:
+        el_id = el["id"]
         full_name = f"{el['first_name']} {el['second_name']}"
         team_name = teams.get(el["team"], "NBA")
         cost = float(el.get("now_cost", el.get("cost", 0))) / 10.0
+        total_points = round(float(el.get("total_points", 0.0) or 0.0) / 10.0, 1)
         
-        form_raw = float(el.get("form", 0.0) or 0.0)
-        form_val = round(form_raw / 10.0, 1)
+        # Gerçek Oynanan Maç (GP)
+        gp = true_gp_data.get(el_id, 0)
+        team_games = team_max_games.get(team_name, gp)
         
-        tp_raw = float(el.get("total_points", 0.0) or 0.0)
-        total_points = round(tp_raw / 10.0, 1)
+        # 1. PPG = TOPLAM FP / OYNADIĞI MAÇ
+        real_ppg = round(total_points / gp, 1) if gp > 0 else 0.0
         
-        ppg_raw = float(el.get("points_per_game", 0.0) or 0.0)
-        ppg_val = round(ppg_raw / 10.0, 1)
+        # 2. FORM = OYNADIĞI SON 5 MAÇIN TOPLAMI / 5
+        real_form = true_form_data.get(el_id, 0.0)
         
-        gp = int(round(total_points / ppg_val)) if ppg_val > 0 else 0
-        team_games = team_max_games[team_name]
-
-        if gp > 0 and team_games > 0 and gp < team_games:
-            form_val = round(form_val * (team_games / gp), 1)
-            
-        total_minutes = float(el.get("minutes", 0.0) or 0.0)
-        mpg = round(total_minutes / gp, 1) if gp > 0 else 0.0
+        # 3. VALUE = TOPLAM FP / FİYAT
+        value_ratio = round(total_points / cost, 2) if cost > 0 else 0.0
+        
+        # 4. FIRSAT = FORM / FİYAT
+        firsat_index = round(real_form / cost, 2) if cost > 0 else 0.0
+        
+        mpg = round(float(el.get("minutes", 0.0) or 0.0) / gp, 1) if gp > 0 else 0.0
         
         if gp == 0:
-            total_points = 0.0
-            form_val = 0.0
-            ppg_val = 0.0
+            total_points = real_ppg = real_form = value_ratio = firsat_index = 0.0
             
-        value_ratio = round(total_points / cost, 2) if cost > 0 and gp > 0 else 0.0
-        firsat_index = round(form_val / cost, 2) if cost > 0 and gp > 0 else 0.0
-        
         availability = int(round((gp / team_games) * 100)) if team_games > 0 else 0
         
         player_list.append({
@@ -464,8 +468,8 @@ def fetch_live_fantasy_data():
             "Dk/Maç": mpg,
             "Maç (Dev%)": f"{gp} (%{availability})",
             "Toplam FP": total_points,
-            "FP Ort. (PPG)": ppg_val,
-            "Form": form_val,
+            "FP Ort. (PPG)": real_ppg,
+            "Form": real_form,
             "Value": value_ratio,
             "Fırsat": firsat_index,
             "_Mac_Siralama": gp
